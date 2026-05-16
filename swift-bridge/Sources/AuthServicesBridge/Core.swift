@@ -1,8 +1,6 @@
 import Foundation
 import AuthenticationServices
 
-// MARK: – Status codes (authservices-prefixed)
-
 let AUTHSERVICES_OK: Int32 = 0
 let AUTHSERVICES_INVALID_ARGUMENT: Int32 = -1
 let AUTHSERVICES_TIMED_OUT: Int32 = -2
@@ -10,8 +8,6 @@ let AUTHSERVICES_NOT_SUPPORTED: Int32 = -3
 let AUTHSERVICES_FRAMEWORK_ERROR: Int32 = -4
 let AUTHSERVICES_CANCELLED: Int32 = -5
 let AUTHSERVICES_UNKNOWN: Int32 = -99
-
-// MARK: – Raw-pointer helpers (authservices-prefixed)
 
 @inline(__always)
 func authservices_retain<T: AnyObject>(_ object: T) -> UnsafeMutableRawPointer {
@@ -28,14 +24,15 @@ func authservices_release(_ ptr: UnsafeMutableRawPointer) {
     Unmanaged<AnyObject>.fromOpaque(ptr).release()
 }
 
-// MARK: – C-string helpers
-
 @inline(__always)
 func authservicesCString(_ string: String) -> UnsafeMutablePointer<CChar>? {
     string.withCString { strdup($0) }
 }
 
-// MARK: – JSON helpers
+@inline(__always)
+func authservicesCopyJSON<T: Encodable>(_ value: T) -> UnsafeMutablePointer<CChar>? {
+    (try? authservicesEncodeJSON(value)).flatMap(authservicesCString)
+}
 
 func authservicesEncodeJSON<T: Encodable>(_ value: T) throws -> String {
     let data = try JSONEncoder().encode(value)
@@ -57,7 +54,26 @@ func authservicesDecodeJSON<T: Decodable>(_ cString: UnsafePointer<CChar>?, as t
     }
 }
 
-// MARK: – Semaphore / Task helpers
+func authservicesDecodeBase64(_ value: String, field: String) throws -> Data {
+    guard let data = Data(base64Encoded: value, options: .ignoreUnknownCharacters) else {
+        throw AuthServicesBridgeError.invalidArgument("invalid base64 payload for \(field)")
+    }
+    return data
+}
+
+func authservicesDecodeOptionalBase64(_ value: String?, field: String) throws -> Data? {
+    guard let value else { return nil }
+    return try authservicesDecodeBase64(value, field: field)
+}
+
+@discardableResult
+func authservicesFail(
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?,
+    with error: Error
+) -> Int32 {
+    authservicesPopulateError(outError, with: error)
+    return authservicesStatus(for: error)
+}
 
 func authservicesBlockOnAsync<T>(
     timeoutSeconds: Int = 30,
@@ -68,8 +84,11 @@ func authservicesBlockOnAsync<T>(
     let semaphore = DispatchSemaphore(value: 0)
     var result: Result<T, Error>?
     Task {
-        do { result = .success(try await work()) }
-        catch { result = .failure(error) }
+        do {
+            result = .success(try await work())
+        } catch {
+            result = .failure(error)
+        }
         semaphore.signal()
     }
     guard semaphore.wait(timeout: .now() + .seconds(timeoutSeconds)) == .success else {
@@ -77,15 +96,18 @@ func authservicesBlockOnAsync<T>(
         return AUTHSERVICES_TIMED_OUT
     }
     switch result {
-    case .success(let v): onSuccess(v); return AUTHSERVICES_OK
-    case .failure(let e): onError(e); return authservicesStatus(for: e)
+    case .success(let value):
+        onSuccess(value)
+        return AUTHSERVICES_OK
+    case .failure(let error):
+        onError(error)
+        return authservicesStatus(for: error)
     case .none:
-        let e = AuthServicesBridgeError.unknown("no result")
-        onError(e); return e.statusCode
+        let error = AuthServicesBridgeError.unknown("AuthenticationServices operation produced no result")
+        onError(error)
+        return error.statusCode
     }
 }
-
-// MARK: – Error handling
 
 enum AuthServicesBridgeError: Error {
     case invalidArgument(String)
@@ -96,26 +118,39 @@ enum AuthServicesBridgeError: Error {
 
     var statusCode: Int32 {
         switch self {
-        case .invalidArgument: return AUTHSERVICES_INVALID_ARGUMENT
-        case .timedOut:        return AUTHSERVICES_TIMED_OUT
-        case .notSupported:    return AUTHSERVICES_NOT_SUPPORTED
-        case .cancelled:       return AUTHSERVICES_CANCELLED
-        case .unknown:         return AUTHSERVICES_UNKNOWN
+        case .invalidArgument:
+            return AUTHSERVICES_INVALID_ARGUMENT
+        case .timedOut:
+            return AUTHSERVICES_TIMED_OUT
+        case .notSupported:
+            return AUTHSERVICES_NOT_SUPPORTED
+        case .cancelled:
+            return AUTHSERVICES_CANCELLED
+        case .unknown:
+            return AUTHSERVICES_UNKNOWN
         }
     }
 
     var message: String {
         switch self {
-        case .invalidArgument(let m), .timedOut(let m),
-             .notSupported(let m), .cancelled(let m), .unknown(let m): return m
+        case .invalidArgument(let message),
+             .timedOut(let message),
+             .notSupported(let message),
+             .cancelled(let message),
+             .unknown(let message):
+            return message
         }
     }
 }
 
 func authservicesStatus(for error: Error) -> Int32 {
-    if let e = error as? AuthServicesBridgeError { return e.statusCode }
-    if let e = error as? ASAuthorizationError {
-        if e.code == .canceled { return AUTHSERVICES_CANCELLED }
+    if let error = error as? AuthServicesBridgeError {
+        return error.statusCode
+    }
+    if let error = error as? ASAuthorizationError {
+        if error.code == .canceled {
+            return AUTHSERVICES_CANCELLED
+        }
         return AUTHSERVICES_FRAMEWORK_ERROR
     }
     return AUTHSERVICES_FRAMEWORK_ERROR
@@ -125,24 +160,20 @@ func authservicesPopulateError(
     _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?,
     with error: Error
 ) {
-    let msg: String
-    if let e = error as? AuthServicesBridgeError {
-        msg = e.message
+    let message: String
+    if let error = error as? AuthServicesBridgeError {
+        message = error.message
     } else {
-        let ns = error as NSError
-        msg = "\(ns.domain):\(ns.code):\(ns.localizedDescription)"
+        let nsError = error as NSError
+        message = "\(nsError.domain):\(nsError.code):\(nsError.localizedDescription)"
     }
-    outError?.pointee = authservicesCString(msg)
+    outError?.pointee = authservicesCString(message)
 }
-
-// MARK: – Shared free
 
 @_cdecl("authservices_string_free")
 public func authservices_string_free(_ ptr: UnsafeMutablePointer<CChar>?) {
     free(ptr)
 }
-
-// MARK: – JSON payload types
 
 struct AuthServicesRequestKindPayload: Codable {
     let kind: String
@@ -160,9 +191,21 @@ struct AuthServicesAuthorizationPayload: Codable {
     let fullName: String?
     let identityToken: String?
     let authorizationCode: String?
+    let password: String?
     let credentialID: String?
     let rawAttestationObject: String?
     let rawAuthenticatorData: String?
     let signature: String?
+    let userID: String?
+    let attachment: Int?
+    let usedAppID: Bool?
+    let transports: [String]?
+    let largeBlobResultKind: String?
+    let largeBlobData: String?
+    let largeBlobWriteSucceeded: Bool?
+    let largeBlobSupported: Bool?
+    let prfFirst: String?
+    let prfSecond: String?
+    let prfSupported: Bool?
     let error: String?
 }

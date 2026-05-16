@@ -1,11 +1,11 @@
 [package]
 name = "authenticationservices-rs"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/doom-fish/authenticationservices-rs"
 repository = "https://github.com/doom-fish/authenticationservices-rs"
-description = "Safe Rust bindings for Apple's AuthenticationServices framework — Sign in with Apple, passkeys, and web auth sessions on macOS"
+description = "Safe Rust bindings for Apple's AuthenticationServices framework — Apple ID, passwords, passkeys, credential identity store, settings helpers, and web auth on macOS"
 authors = ["Per Johansson <per@doom.fish>"]
 keywords = ["authentication", "passkey", "macos", "apple", "sign-in-with-apple"]
 categories = ["api-bindings", "os::macos-apis"]
@@ -23,6 +23,7 @@ include = [
     "README.md",
     "LICENSE-*",
     "CHANGELOG.md",
+    "COVERAGE.md",
 ]
 
 [lints.rust]

@@ -7,6 +7,8 @@ pub enum AuthenticationServicesError {
     InvalidArgument(String),
     /// The operation timed out.
     TimedOut(String),
+    /// The requested API is not supported on this platform or OS version.
+    NotSupported(String),
     /// The operation was cancelled by the user.
     Cancelled(String),
     /// The underlying `AuthenticationServices` framework returned an error.
@@ -20,6 +22,7 @@ impl fmt::Display for AuthenticationServicesError {
         match self {
             Self::InvalidArgument(msg)
             | Self::TimedOut(msg)
+            | Self::NotSupported(msg)
             | Self::Cancelled(msg)
             | Self::FrameworkError(msg)
             | Self::Unknown(msg) => write!(f, "{msg}"),
@@ -34,6 +37,7 @@ impl AuthenticationServicesError {
         match code {
             -1 => Self::InvalidArgument(message),
             -2 => Self::TimedOut(message),
+            -3 => Self::NotSupported(message),
             -5 => Self::Cancelled(message),
             -4 => Self::FrameworkError(message),
             _ => Self::Unknown(message),
