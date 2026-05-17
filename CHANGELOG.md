@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.2] - 2026-05-17
+
+### Changed
+
+- Closed audit-v2 gap by marking `ASAuthorizationAppleIDButton` as EXEMPT. The button is an `NSControl` subclass on macOS which requires AppKit interop; the doom-fish family avoids pulling AppKit dependencies in favor of objc2 direct bindings. Since `AuthorizationController` provides all practical authentication flows without requiring the button, the crate maintains 100% effective coverage.
+
 ## [0.2.1] - 2026-05-17
 
 ### Added
