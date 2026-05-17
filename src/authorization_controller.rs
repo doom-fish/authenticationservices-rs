@@ -1,4 +1,4 @@
-//! [`ASAuthorizationController`] and decoded authorization results.
+//! \[`ASAuthorizationController`\] and decoded authorization results.
 
 use core::ffi::c_void;
 use std::ops::{BitOr, BitOrAssign};

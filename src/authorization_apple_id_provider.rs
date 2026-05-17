@@ -1,4 +1,4 @@
-//! [`ASAuthorizationAppleIDProvider`] wrappers.
+//! \[`ASAuthorizationAppleIDProvider`\] wrappers.
 
 use core::ffi::c_void;
 use std::ffi::CString;

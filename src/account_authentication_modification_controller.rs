@@ -1,4 +1,4 @@
-//! [`ASAccountAuthenticationModificationController`] placeholders for macOS builds.
+//! \[`ASAccountAuthenticationModificationController`\] placeholders for macOS builds.
 
 use std::ptr;
 

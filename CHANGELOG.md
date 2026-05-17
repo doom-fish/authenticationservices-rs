@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.3] - 2026-05-17
+
+### Changed
+
+- Fixed 8 doc comment link escaping issues in module-level documentation to eliminate rustdoc warnings.
+
 ## [0.2.2] - 2026-05-17
 
 ### Changed

@@ -1,4 +1,4 @@
-//! [`ASSettingsHelper`] wrappers.
+//! \[`ASSettingsHelper`\] wrappers.
 
 use std::ptr;
 

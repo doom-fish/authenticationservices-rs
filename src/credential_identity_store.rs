@@ -1,4 +1,4 @@
-//! [`ASCredentialIdentityStore`] and related identity types.
+//! \[`ASCredentialIdentityStore`\] and related identity types.
 
 use std::ops::{BitOr, BitOrAssign};
 use std::{ptr};

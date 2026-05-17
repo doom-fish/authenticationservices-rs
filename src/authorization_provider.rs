@@ -1,4 +1,4 @@
-//! [`ASAuthorizationProvider`] protocol helpers plus [`PasswordProvider`].
+//! \[`ASAuthorizationProvider`\] protocol helpers plus [`PasswordProvider`].
 
 use core::ffi::c_void;
 use std::ptr;

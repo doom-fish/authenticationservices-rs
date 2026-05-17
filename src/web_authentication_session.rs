@@ -1,4 +1,4 @@
-//! [`ASWebAuthenticationSession`] wrappers.
+//! \[`ASWebAuthenticationSession`\] wrappers.
 
 use core::ffi::c_void;
 use std::collections::BTreeMap;

@@ -1,4 +1,4 @@
-//! [`ASPasswordCredential`] helpers.
+//! \[`ASPasswordCredential`\] helpers.
 
 use std::ffi::CString;
 use std::ptr;
