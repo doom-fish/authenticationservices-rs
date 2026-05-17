@@ -191,6 +191,8 @@ struct AuthServicesAuthorizationPayload: Codable {
     let fullName: String?
     let identityToken: String?
     let authorizationCode: String?
+    let realUserStatus: String?
+    let userAgeRange: String?
     let password: String?
     let credentialID: String?
     let rawAttestationObject: String?

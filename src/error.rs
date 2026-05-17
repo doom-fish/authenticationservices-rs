@@ -1,5 +1,8 @@
 use std::fmt;
 
+use crate::ffi;
+use crate::private;
+
 /// Errors returned by the `authenticationservices` crate.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthenticationServicesError {
@@ -43,4 +46,49 @@ impl AuthenticationServicesError {
             _ => Self::Unknown(message),
         }
     }
+}
+
+fn take_domain(
+    ptr: *mut core::ffi::c_char,
+    label: &str,
+) -> Result<String, AuthenticationServicesError> {
+    if ptr.is_null() {
+        Err(AuthenticationServicesError::Unknown(format!(
+            "{label} returned null"
+        )))
+    } else {
+        Ok(unsafe { private::take_string(ptr) })
+    }
+}
+
+/// Returns `ASAuthorizationErrorDomain`.
+pub fn authorization_error_domain() -> Result<String, AuthenticationServicesError> {
+    take_domain(
+        unsafe { ffi::authservices_authorization_error_domain() },
+        "authorization_error_domain",
+    )
+}
+
+/// Returns `ASCredentialIdentityStoreErrorDomain`.
+pub fn credential_identity_store_error_domain() -> Result<String, AuthenticationServicesError> {
+    take_domain(
+        unsafe { ffi::authservices_credential_identity_store_error_domain() },
+        "credential_identity_store_error_domain",
+    )
+}
+
+/// Returns `ASExtensionErrorDomain`.
+pub fn extension_error_domain() -> Result<String, AuthenticationServicesError> {
+    take_domain(
+        unsafe { ffi::authservices_extension_error_domain() },
+        "extension_error_domain",
+    )
+}
+
+/// Returns `ASWebAuthenticationSessionErrorDomain`.
+pub fn web_authentication_session_error_domain() -> Result<String, AuthenticationServicesError> {
+    take_domain(
+        unsafe { ffi::authservices_web_authentication_session_error_domain() },
+        "web_authentication_session_error_domain",
+    )
 }

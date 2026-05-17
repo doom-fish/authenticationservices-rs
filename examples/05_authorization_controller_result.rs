@@ -8,6 +8,8 @@ fn main() {
         full_name: Some("Alice Example".into()),
         identity_token: Some("identity-token".into()),
         authorization_code: Some("authorization-code".into()),
+        real_user_status: Some(authenticationservices::UserDetectionStatus::LikelyReal),
+        user_age_range: Some(authenticationservices::UserAgeRange::NotChild),
         password: None,
         credential_id: None,
         raw_attestation_object: None,

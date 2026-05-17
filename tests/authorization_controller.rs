@@ -11,6 +11,8 @@ fn authorization_helpers_decode_password_results() {
         full_name: None,
         identity_token: None,
         authorization_code: None,
+        real_user_status: None,
+        user_age_range: None,
         password: Some("secret".into()),
         credential_id: None,
         raw_attestation_object: None,

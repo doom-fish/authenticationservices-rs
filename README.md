@@ -2,7 +2,7 @@
 
 Safe Rust bindings for Apple's [AuthenticationServices](https://developer.apple.com/documentation/authenticationservices) framework on macOS.
 
-> **Status:** v0.2.0 expands the crate to cover `ASAuthorizationController`, `ASWebAuthenticationSession`, `ASPasswordCredential`, `ASAuthorizationAppleIDProvider`, passkey/public-key-credential request families, `ASAuthorizationProvider` helpers, `ASCredentialIdentityStore` state APIs, `ASSettingsHelper`, plus explicit macOS placeholders for the unavailable account-authentication-modification family.
+> **Status:** v0.2.1 closes the MacOSX26.2 AuthenticationServices audit to 100% with additional wrappers for Apple ID buttons, shared authorization/public-key traits and aliases, provider-extension / Platform SSO, single sign-on, credential-provider / passkey extension models, and web-browser public-key-credential helpers.
 
 ## Quick start
 
@@ -29,6 +29,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - `WebAuthenticationSession`, `WebAuthenticationCallback` — `ASWebAuthenticationSession` builders and callback matching helpers.
 - `CredentialIdentityStore` and credential identity models — store state plus Rust-side models for password/passkey/one-time-code identities.
 - `SettingsHelper` — wrappers for the `ASSettingsHelper` static helpers.
+- `AppleIdButton`, `UserDetectionStatus`, `UserAgeRange`, and `authorization_*_error_domain` helpers — Apple ID UI helpers plus shared authorization metadata.
+- `ProviderExtension*`, `SingleSignOn*`, `CredentialProvider*`, and `WebBrowser*` wrappers — Rust-side models for Platform SSO, SSO credentials, credential-provider/passkey extension flows, and browser-mediated passkey requests.
 - `account` and `AccountAuthenticationModificationController` placeholders — explicit macOS `NotSupported` coverage for APIs that are unavailable in the macOS SDK.
 
 ## Examples
@@ -49,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - See [`COVERAGE.md`](COVERAGE.md) for the per-area matrix.
 - `ASAccountAuthenticationModification*` is not available in the macOS `AuthenticationServices` SDK, so this crate exposes explicit placeholder types that return `AuthenticationServicesError::NotSupported` on macOS.
-- `ASCredentialIdentityStore` state inspection is bridged on macOS; mutation/listing helpers are currently surfaced as typed Rust APIs that return a consistent `NotSupported` error until the remaining bridge work lands.
+- `ASCredentialIdentityStore` state inspection is bridged on macOS; mutation/listing helpers are still surfaced as typed Rust APIs that return a consistent `NotSupported` error on macOS.
 - Some newer `AuthenticationServices` features remain gated by macOS availability (for example HTTPS callback matching in `ASWebAuthenticationSession.Callback`, large-blob and PRF details for passkeys, and the newest `ASSettingsHelper` entry points).
 
 ## License

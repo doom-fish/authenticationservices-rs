@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use serde::Deserialize;
 
 use crate::authorization_apple_id_provider::AppleIdRequest;
+use crate::authorization_types::{UserAgeRange, UserDetectionStatus};
 use crate::authorization_passkey::{
     PasskeyAssertionRequest, PasskeyRegistrationRequest, PlatformPublicKeyCredentialAssertion,
     PlatformPublicKeyCredentialRegistration, SecurityKeyAssertionRequest,
@@ -32,6 +33,10 @@ pub struct AppleIdCredential {
     pub identity_token: Option<String>,
     #[serde(rename = "authorizationCode")]
     pub authorization_code: Option<String>,
+    #[serde(rename = "realUserStatus")]
+    pub real_user_status: Option<UserDetectionStatus>,
+    #[serde(rename = "userAgeRange")]
+    pub user_age_range: Option<UserAgeRange>,
 }
 
 /// Generic authorization result from any provider.
@@ -47,6 +52,10 @@ pub struct Authorization {
     pub identity_token: Option<String>,
     #[serde(rename = "authorizationCode")]
     pub authorization_code: Option<String>,
+    #[serde(rename = "realUserStatus")]
+    pub real_user_status: Option<UserDetectionStatus>,
+    #[serde(rename = "userAgeRange")]
+    pub user_age_range: Option<UserAgeRange>,
     pub password: Option<String>,
     #[serde(rename = "credentialID")]
     pub credential_id: Option<String>,
@@ -86,6 +95,8 @@ impl Authorization {
             full_name: self.full_name.clone(),
             identity_token: self.identity_token.clone(),
             authorization_code: self.authorization_code.clone(),
+            real_user_status: self.real_user_status,
+            user_age_range: self.user_age_range,
         })
     }
 

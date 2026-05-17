@@ -8,6 +8,11 @@ unsafe extern "C" {
     pub fn authservices_authorization_provider_protocol_name() -> *mut c_char;
     pub fn authservices_authorization_provider_supported_kinds_json() -> *mut c_char;
 
+    pub fn authservices_authorization_error_domain() -> *mut c_char;
+    pub fn authservices_credential_identity_store_error_domain() -> *mut c_char;
+    pub fn authservices_extension_error_domain() -> *mut c_char;
+    pub fn authservices_web_authentication_session_error_domain() -> *mut c_char;
+
     pub fn authservices_password_provider_create_request(
         out_error: *mut *mut c_char,
     ) -> *mut c_void;

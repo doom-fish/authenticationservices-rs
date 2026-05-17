@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.1] - 2026-05-17
+
+### Added
+
+- Added `authorization_apple_id_button`, `authorization_types`, `foundation_types`, `authorization_provider_extension`, `authorization_single_sign_on`, `authorization_web_browser`, and `credential_provider` modules to close the MacOSX26.2 AuthenticationServices audit.
+- Added Apple ID button helpers, shared authorization/public-key/credential traits, ASFoundation aliases, NSError-domain helpers, and COSE/client-data wrappers.
+- Added Rust-side models for provider-extension / Platform SSO, single sign-on, credential-provider / passkey extension, and web-browser public-key-credential request families.
+- Added smoke tests covering the new Apple ID button, provider-extension, single sign-on, web-browser, credential-provider, and shared-surface APIs.
+
+### Changed
+
+- Extended Apple ID authorization payload decoding with `real_user_status` and `user_age_range`.
+- Bumped crate version to `0.2.1` and drove `COVERAGE_AUDIT.md` to 100% coverage.
+
 ## [0.2.0] - 2026-05-16
 
 ### Added

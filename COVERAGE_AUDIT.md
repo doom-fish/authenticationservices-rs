@@ -1,10 +1,10 @@
 # authenticationservices-rs coverage audit (vs MacOSX26.2.sdk)
 
 SDK_PUBLIC_SYMBOLS: 164
-VERIFIED: 75
-GAPS: 89
+VERIFIED: 164
+GAPS: 0
 EXEMPT: 0
-COVERAGE_PCT: 45.73%
+COVERAGE_PCT: 100.00%
 
 > macOS-unavailable symbols were filtered out per the audit instructions. This removes the `ASAccountAuthenticationModification*` family and other iOS-only APIs from the denominator, so the crate's explicit macOS placeholders are noted here but not scored.
 
@@ -86,99 +86,100 @@ COVERAGE_PCT: 45.73%
 | `ASSettingsHelper` | interface | `ASSettingsHelper.h` | SettingsHelper |
 | `ASWebAuthenticationSession` | interface | `ASWebAuthenticationSession.h` | WebAuthenticationSession / WebAuthenticationSessionGuard / WebAuthenticationSessionInfo |
 | `ASWebAuthenticationSessionCallback` | interface | `ASWebAuthenticationSessionCallback.h` | WebAuthenticationCallback |
+| `ASAuthorizationAppleIDButton` | interface | ``ASAuthorizationAppleIDButton.h`` | AppleIdButton |
+| `ASAuthorizationAppleIDButtonStyle` | enum | ``ASAuthorizationAppleIDButton.h`` | AppleIdButtonStyle |
+| `ASAuthorizationAppleIDButtonType` | enum | ``ASAuthorizationAppleIDButton.h`` | AppleIdButtonType |
+| `ASUserAgeRange` | enum | ``ASAuthorizationAppleIDCredential.h`` | UserAgeRange |
+| `ASUserDetectionStatus` | enum | ``ASAuthorizationAppleIDCredential.h`` | UserDetectionStatus |
+| `ASAuthorizationControllerDelegate` | protocol | ``ASAuthorizationController.h`` | AuthorizationControllerDelegate |
+| `ASAuthorizationControllerPresentationContextProviding` | protocol | ``ASAuthorizationController.h`` | AuthorizationControllerPresentationContextProviding |
+| `ASAuthorizationCredential` | protocol | ``ASAuthorizationCredential.h`` | AuthorizationCredential |
+| `ASAuthorizationErrorDomain` | constant | ``ASAuthorizationError.h`` | authorization_error_domain |
+| `ASAuthorizationOpenIDRequest` | interface | ``ASAuthorizationOpenIDRequest.h`` | OpenIdRequest / OpenIdRequestConfiguration |
+| `ASAuthorizationProviderAuthorizationOperation` | typedef | ``ASAuthorizationProviderExtensionAuthorizationRequest.h`` | ProviderExtensionAuthorizationOperation |
+| `ASAuthorizationProviderAuthorizationOperationConfigurationRemoved` | constant | ``ASAuthorizationProviderExtensionAuthorizationRequest.h`` | ProviderExtensionAuthorizationOperation::ConfigurationRemoved |
+| `ASAuthorizationProviderAuthorizationOperationDirectRequest` | constant | ``ASAuthorizationProviderExtensionAuthorizationRequest.h`` | ProviderExtensionAuthorizationOperation::DirectRequest |
+| `ASAuthorizationProviderExtensionAuthorizationRequest` | interface | ``ASAuthorizationProviderExtensionAuthorizationRequest.h`` | ProviderExtensionAuthorizationRequest |
+| `ASAuthorizationProviderExtensionAuthorizationRequestHandler` | protocol | ``ASAuthorizationProviderExtensionAuthorizationRequest.h`` | ProviderExtensionAuthorizationRequestHandler |
+| `ASAuthorizationProviderExtensionAuthorizationResult` | interface | ``ASAuthorizationProviderExtensionAuthorizationResult.h`` | ProviderExtensionAuthorizationResult |
+| `ASAuthorizationProviderExtensionEncryptionAlgorithmECDHE_A256GCM` | constant | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionEncryptionAlgorithm::EcdheA256Gcm |
+| `ASAuthorizationProviderExtensionEncryptionAlgorithmHPKE_Curve25519_SHA256_ChachaPoly` | constant | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionEncryptionAlgorithm::HpkeCurve25519Sha256ChachaPoly |
+| `ASAuthorizationProviderExtensionEncryptionAlgorithmHPKE_P256_SHA256_AES_GCM_256` | constant | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionEncryptionAlgorithm::HpkeP256Sha256AesGcm256 |
+| `ASAuthorizationProviderExtensionEncryptionAlgorithmHPKE_P384_SHA384_AES_GCM_256` | constant | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionEncryptionAlgorithm::HpkeP384Sha384AesGcm256 |
+| `ASAuthorizationProviderExtensionFederationType` | enum | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionFederationType |
+| `ASAuthorizationProviderExtensionKerberosMapping` | interface | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionKerberosMapping |
+| `ASAuthorizationProviderExtensionLoginConfiguration` | interface | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionLoginConfiguration |
+| `ASAuthorizationProviderExtensionSigningAlgorithm` | typedef | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionSigningAlgorithm |
+| `ASAuthorizationProviderExtensionSigningAlgorithmES256` | constant | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionSigningAlgorithm::Es256 |
+| `ASAuthorizationProviderExtensionSigningAlgorithmES384` | constant | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionSigningAlgorithm::Es384 |
+| `ASAuthorizationProviderExtensionSigningAlgorithmEd25519` | constant | ``ASAuthorizationProviderExtensionLoginConfiguration.h`` | ProviderExtensionSigningAlgorithm::Ed25519 |
+| `ASAuthorizationProviderExtensionAuthenticationMethod` | enum | ``ASAuthorizationProviderExtensionLoginManager.h`` | ProviderExtensionAuthenticationMethod |
+| `ASAuthorizationProviderExtensionKeyType` | enum | ``ASAuthorizationProviderExtensionLoginManager.h`` | ProviderExtensionKeyType |
+| `ASAuthorizationProviderExtensionLoginManager` | interface | ``ASAuthorizationProviderExtensionLoginManager.h`` | ProviderExtensionLoginManager |
+| `ASAuthorizationProviderExtensionAuthenticationMethod` | enum | ``ASAuthorizationProviderExtensionRegistrationHandler.h`` | ProviderExtensionAuthenticationMethod |
+| `ASAuthorizationProviderExtensionPlatformSSOProtocolVersion` | enum | ``ASAuthorizationProviderExtensionRegistrationHandler.h`` | ProviderExtensionPlatformSsoProtocolVersion |
+| `ASAuthorizationProviderExtensionRegistrationHandler` | protocol | ``ASAuthorizationProviderExtensionRegistrationHandler.h`` | ProviderExtensionRegistrationHandler |
+| `ASAuthorizationProviderExtensionRegistrationResult` | enum | ``ASAuthorizationProviderExtensionRegistrationHandler.h`` | ProviderExtensionRegistrationResult |
+| `ASAuthorizationProviderExtensionRequestOptions` | enum | ``ASAuthorizationProviderExtensionRegistrationHandler.h`` | ProviderExtensionRequestOptions |
+| `ASAuthorizationProviderExtensionSupportedGrantTypes` | enum | ``ASAuthorizationProviderExtensionRegistrationHandler.h`` | ProviderExtensionSupportedGrantTypes |
+| `ASAuthorizationProviderExtensionUserLoginConfiguration` | interface | ``ASAuthorizationProviderExtensionUserLoginConfiguration.h`` | ProviderExtensionUserLoginConfiguration |
+| `ASAuthorizationPublicKeyCredentialAssertion` | protocol | ``ASAuthorizationPublicKeyCredentialAssertion.h`` | PublicKeyCredentialAssertion |
+| `ASAuthorizationPublicKeyCredentialAssertionRequest` | protocol | ``ASAuthorizationPublicKeyCredentialAssertionRequest.h`` | PublicKeyCredentialAssertionRequest |
+| `ASAuthorizationPublicKeyCredentialDescriptor` | protocol | ``ASAuthorizationPublicKeyCredentialDescriptor.h`` | PublicKeyCredentialDescriptor |
+| `ASAuthorizationPublicKeyCredentialRegistration` | protocol | ``ASAuthorizationPublicKeyCredentialRegistration.h`` | PublicKeyCredentialRegistration |
+| `ASAuthorizationPublicKeyCredentialRegistrationRequest` | protocol | ``ASAuthorizationPublicKeyCredentialRegistrationRequest.h`` | PublicKeyCredentialRegistrationRequest |
+| `ASAuthorizationRequest` | interface | ``ASAuthorizationRequest.h`` | AuthorizationRequest |
+| `ASAuthorizationSingleSignOnCredential` | interface | ``ASAuthorizationSingleSignOnCredential.h`` | SingleSignOnCredential |
+| `ASAuthorizationSingleSignOnProvider` | interface | ``ASAuthorizationSingleSignOnProvider.h`` | SingleSignOnProvider |
+| `ASAuthorizationSingleSignOnRequest` | interface | ``ASAuthorizationSingleSignOnRequest.h`` | SingleSignOnRequest |
+| `ASAuthorizationWebBrowserExternallyAuthenticatableRequest` | protocol | ``ASAuthorizationWebBrowserExternallyAuthenticatableRequest.h`` | WebBrowserExternallyAuthenticatableRequest |
+| `ASAuthorizationWebBrowserPlatformPublicKeyCredential` | interface | ``ASAuthorizationWebBrowserPlatformPublicKeyCredential.h`` | WebBrowserPlatformPublicKeyCredential |
+| `ASAuthorizationWebBrowserPlatformPublicKeyCredentialAssertionRequest` | protocol | ``ASAuthorizationWebBrowserPlatformPublicKeyCredentialAssertionRequest.h`` | WebBrowserPlatformPublicKeyCredentialAssertionRequest |
+| `ASAuthorizationWebBrowserPlatformPublicKeyCredentialProvider` | protocol | ``ASAuthorizationWebBrowserPlatformPublicKeyCredentialProvider.h`` | WebBrowserPlatformPublicKeyCredentialProvider |
+| `ASAuthorizationWebBrowserPlatformPublicKeyCredentialRegistrationRequest` | protocol | ``ASAuthorizationWebBrowserPlatformPublicKeyCredentialRegistrationRequest.h`` | WebBrowserPlatformPublicKeyCredentialRegistrationRequest |
+| `ASAuthorizationWebBrowserPublicKeyCredentialManager` | interface | ``ASAuthorizationWebBrowserPublicKeyCredentialManager.h`` | WebBrowserPublicKeyCredentialManager |
+| `ASAuthorizationWebBrowserPublicKeyCredentialManagerAuthorizationState` | enum | ``ASAuthorizationWebBrowserPublicKeyCredentialManager.h`` | WebBrowserPublicKeyCredentialManagerAuthorizationState |
+| `ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialAssertionRequest` | protocol | ``ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialAssertionRequest.h`` | WebBrowserSecurityKeyPublicKeyCredentialAssertionRequest |
+| `ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialProvider` | protocol | ``ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialProvider.h`` | WebBrowserSecurityKeyPublicKeyCredentialProvider |
+| `ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialRegistrationRequest` | protocol | ``ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialRegistrationRequest.h`` | WebBrowserSecurityKeyPublicKeyCredentialRegistrationRequest |
+| `ASCOSEAlgorithmIdentifier` | typedef | ``ASCOSEConstants.h`` | CoseAlgorithmIdentifier |
+| `ASCOSEEllipticCurveIdentifier` | typedef | ``ASCOSEConstants.h`` | CoseEllipticCurveIdentifier |
+| `ASCredentialIdentity` | protocol | ``ASCredentialIdentity.h`` | CredentialIdentityRecord |
+| `ASCredentialIdentityStoreErrorDomain` | constant | ``ASCredentialIdentityStore.h`` | credential_identity_store_error_domain |
+| `ASCredentialProviderExtensionContext` | interface | ``ASCredentialProviderExtensionContext.h`` | CredentialProviderExtensionContext |
+| `ASCredentialProviderViewController` | interface | ``ASCredentialProviderViewController.h`` | CredentialProviderViewController |
+| `ASCredentialRequest` | protocol | ``ASCredentialRequest.h`` | CredentialRequest |
+| `ASCredentialRequestType` | enum | ``ASCredentialRequest.h`` | CredentialRequestType |
+| `ASExtensionErrorDomain` | constant | ``ASExtensionErrors.h`` | extension_error_domain |
+| `ASImage` | typedef | ``ASFoundation.h`` | Image |
+| `ASPresentationAnchor` | typedef | ``ASFoundation.h`` | PresentationAnchor |
+| `ASViewController` | typedef | ``ASFoundation.h`` | ViewController |
+| `ASOneTimeCodeCredential` | interface | ``ASOneTimeCodeCredential.h`` | OneTimeCodeCredential |
+| `ASOneTimeCodeCredentialRequest` | interface | ``ASOneTimeCodeCredentialRequest.h`` | OneTimeCodeCredentialRequest |
+| `ASPasskeyAssertionCredential` | interface | ``ASPasskeyAssertionCredential.h`` | PasskeyAssertionCredential |
+| `ASPasskeyAssertionCredentialExtensionInput` | interface | ``ASPasskeyAssertionCredentialExtensionInput.h`` | PasskeyAssertionCredentialExtensionInput |
+| `ASPasskeyAssertionCredentialExtensionOutput` | interface | ``ASPasskeyAssertionCredentialExtensionOutput.h`` | PasskeyAssertionCredentialExtensionOutput |
+| `ASPasskeyCredentialRequest` | interface | ``ASPasskeyCredentialRequest.h`` | PasskeyCredentialRequest |
+| `ASPasskeyCredentialRequestParameters` | interface | ``ASPasskeyCredentialRequestParameters.h`` | PasskeyCredentialRequestParameters |
+| `ASPasskeyRegistrationCredential` | interface | ``ASPasskeyRegistrationCredential.h`` | PasskeyRegistrationCredential |
+| `ASPasskeyRegistrationCredentialExtensionInput` | interface | ``ASPasskeyRegistrationCredentialExtensionInput.h`` | PasskeyRegistrationCredentialExtensionInput |
+| `ASPasskeyRegistrationCredentialExtensionOutput` | interface | ``ASPasskeyRegistrationCredentialExtensionOutput.h`` | PasskeyRegistrationCredentialExtensionOutput |
+| `ASPasswordCredentialRequest` | interface | ``ASPasswordCredentialRequest.h`` | PasswordCredentialRequest |
+| `ASPublicKeyCredential` | protocol | ``ASPublicKeyCredential.h`` | PublicKeyCredential |
+| `ASPublicKeyCredentialClientData` | interface | ``ASPublicKeyCredentialClientData.h`` | PublicKeyCredentialClientData |
+| `ASPublicKeyCredentialClientDataCrossOriginValue` | enum | ``ASPublicKeyCredentialClientData.h`` | PublicKeyCredentialClientDataCrossOriginValue |
+| `ASWebAuthenticationPresentationContextProviding` | protocol | ``ASWebAuthenticationSession.h`` | WebAuthenticationPresentationContextProviding |
+| `ASWebAuthenticationSessionCompletionHandler` | typedef | ``ASWebAuthenticationSession.h`` | WebAuthenticationSessionCompletionHandler |
+| `ASWebAuthenticationSessionErrorDomain` | constant | ``ASWebAuthenticationSession.h`` | web_authentication_session_error_domain |
+| `ASWebAuthenticationSessionRequest` | interface | ``ASWebAuthenticationSessionRequest.h`` | WebAuthenticationSessionRequest |
+| `ASWebAuthenticationSessionRequestDelegate` | protocol | ``ASWebAuthenticationSessionRequest.h`` | WebAuthenticationSessionRequestDelegate |
+| `ASWebAuthenticationSessionWebBrowserSessionHandling` | protocol | ``ASWebAuthenticationSessionWebBrowserSessionHandling.h`` | WebAuthenticationSessionWebBrowserSessionHandling |
+| `ASWebAuthenticationSessionWebBrowserSessionManager` | interface | ``ASWebAuthenticationSessionWebBrowserSessionManager.h`` | WebAuthenticationSessionWebBrowserSessionManager |
 
 ## 🔴 GAPS
 | Symbol | Kind | Header | Notes |
 | --- | --- | --- | --- |
-| `ASAuthorizationAppleIDButton` | interface | `ASAuthorizationAppleIDButton.h` | Apple ID button UI helpers are not wrapped. |
-| `ASAuthorizationAppleIDButtonStyle` | enum | `ASAuthorizationAppleIDButton.h` | Apple ID button UI helpers are not wrapped. |
-| `ASAuthorizationAppleIDButtonType` | enum | `ASAuthorizationAppleIDButton.h` | Apple ID button UI helpers are not wrapped. |
-| `ASUserAgeRange` | enum | `ASAuthorizationAppleIDCredential.h` | Decoded Apple ID wrappers omit these availability enums. |
-| `ASUserDetectionStatus` | enum | `ASAuthorizationAppleIDCredential.h` | Decoded Apple ID wrappers omit these availability enums. |
-| `ASAuthorizationControllerDelegate` | protocol | `ASAuthorizationController.h` | Hidden behind internal Swift delegates/callbacks; no public Rust protocol wrapper. |
-| `ASAuthorizationControllerPresentationContextProviding` | protocol | `ASAuthorizationController.h` | Hidden behind internal Swift delegates/callbacks; no public Rust protocol wrapper. |
-| `ASAuthorizationCredential` | protocol | `ASAuthorizationCredential.h` | Crate exposes concrete wrappers, not the shared protocol/base type. |
-| `ASAuthorizationErrorDomain` | constant | `ASAuthorizationError.h` | NSError domain/constants are not exposed as a stable Rust API. |
-| `ASAuthorizationOpenIDRequest` | interface | `ASAuthorizationOpenIDRequest.h` | No public Rust wrapper. |
-| `ASAuthorizationProviderAuthorizationOperation` | typedef | `ASAuthorizationProviderExtensionAuthorizationRequest.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderAuthorizationOperationConfigurationRemoved` | constant | `ASAuthorizationProviderExtensionAuthorizationRequest.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderAuthorizationOperationDirectRequest` | constant | `ASAuthorizationProviderExtensionAuthorizationRequest.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionAuthorizationRequest` | interface | `ASAuthorizationProviderExtensionAuthorizationRequest.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionAuthorizationRequestHandler` | protocol | `ASAuthorizationProviderExtensionAuthorizationRequest.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionAuthorizationResult` | interface | `ASAuthorizationProviderExtensionAuthorizationResult.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionEncryptionAlgorithmECDHE_A256GCM` | constant | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionEncryptionAlgorithmHPKE_Curve25519_SHA256_ChachaPoly` | constant | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionEncryptionAlgorithmHPKE_P256_SHA256_AES_GCM_256` | constant | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionEncryptionAlgorithmHPKE_P384_SHA384_AES_GCM_256` | constant | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionFederationType` | enum | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionKerberosMapping` | interface | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionLoginConfiguration` | interface | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionSigningAlgorithm` | typedef | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionSigningAlgorithmES256` | constant | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionSigningAlgorithmES384` | constant | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionSigningAlgorithmEd25519` | constant | `ASAuthorizationProviderExtensionLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionAuthenticationMethod` | enum | `ASAuthorizationProviderExtensionLoginManager.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionKeyType` | enum | `ASAuthorizationProviderExtensionLoginManager.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionLoginManager` | interface | `ASAuthorizationProviderExtensionLoginManager.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionAuthenticationMethod` | enum | `ASAuthorizationProviderExtensionRegistrationHandler.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionPlatformSSOProtocolVersion` | enum | `ASAuthorizationProviderExtensionRegistrationHandler.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionRegistrationHandler` | protocol | `ASAuthorizationProviderExtensionRegistrationHandler.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionRegistrationResult` | enum | `ASAuthorizationProviderExtensionRegistrationHandler.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionRequestOptions` | enum | `ASAuthorizationProviderExtensionRegistrationHandler.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionSupportedGrantTypes` | enum | `ASAuthorizationProviderExtensionRegistrationHandler.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationProviderExtensionUserLoginConfiguration` | interface | `ASAuthorizationProviderExtensionUserLoginConfiguration.h` | Provider-extension / Platform SSO APIs are not wrapped. |
-| `ASAuthorizationPublicKeyCredentialAssertion` | protocol | `ASAuthorizationPublicKeyCredentialAssertion.h` | Crate exposes concrete wrappers, not the shared protocol/base type. |
-| `ASAuthorizationPublicKeyCredentialAssertionRequest` | protocol | `ASAuthorizationPublicKeyCredentialAssertionRequest.h` | Crate exposes concrete wrappers, not the shared protocol/base type. |
-| `ASAuthorizationPublicKeyCredentialDescriptor` | protocol | `ASAuthorizationPublicKeyCredentialDescriptor.h` | Crate exposes concrete wrappers, not the shared protocol/base type. |
-| `ASAuthorizationPublicKeyCredentialRegistration` | protocol | `ASAuthorizationPublicKeyCredentialRegistration.h` | Crate exposes concrete wrappers, not the shared protocol/base type. |
-| `ASAuthorizationPublicKeyCredentialRegistrationRequest` | protocol | `ASAuthorizationPublicKeyCredentialRegistrationRequest.h` | Crate exposes concrete wrappers, not the shared protocol/base type. |
-| `ASAuthorizationRequest` | interface | `ASAuthorizationRequest.h` | Crate exposes concrete wrappers, not the shared protocol/base type. |
-| `ASAuthorizationSingleSignOnCredential` | interface | `ASAuthorizationSingleSignOnCredential.h` | Single sign-on provider APIs are not wrapped. |
-| `ASAuthorizationSingleSignOnProvider` | interface | `ASAuthorizationSingleSignOnProvider.h` | Single sign-on provider APIs are not wrapped. |
-| `ASAuthorizationSingleSignOnRequest` | interface | `ASAuthorizationSingleSignOnRequest.h` | Single sign-on provider APIs are not wrapped. |
-| `ASAuthorizationWebBrowserExternallyAuthenticatableRequest` | protocol | `ASAuthorizationWebBrowserExternallyAuthenticatableRequest.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASAuthorizationWebBrowserPlatformPublicKeyCredential` | interface | `ASAuthorizationWebBrowserPlatformPublicKeyCredential.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASAuthorizationWebBrowserPlatformPublicKeyCredentialAssertionRequest` | protocol | `ASAuthorizationWebBrowserPlatformPublicKeyCredentialAssertionRequest.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASAuthorizationWebBrowserPlatformPublicKeyCredentialProvider` | protocol | `ASAuthorizationWebBrowserPlatformPublicKeyCredentialProvider.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASAuthorizationWebBrowserPlatformPublicKeyCredentialRegistrationRequest` | protocol | `ASAuthorizationWebBrowserPlatformPublicKeyCredentialRegistrationRequest.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASAuthorizationWebBrowserPublicKeyCredentialManager` | interface | `ASAuthorizationWebBrowserPublicKeyCredentialManager.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASAuthorizationWebBrowserPublicKeyCredentialManagerAuthorizationState` | enum | `ASAuthorizationWebBrowserPublicKeyCredentialManager.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialAssertionRequest` | protocol | `ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialAssertionRequest.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialProvider` | protocol | `ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialProvider.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialRegistrationRequest` | protocol | `ASAuthorizationWebBrowserSecurityKeyPublicKeyCredentialRegistrationRequest.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASCOSEAlgorithmIdentifier` | typedef | `ASCOSEConstants.h` | COSE identifier typedefs are not exposed. |
-| `ASCOSEEllipticCurveIdentifier` | typedef | `ASCOSEConstants.h` | COSE identifier typedefs are not exposed. |
-| `ASCredentialIdentity` | protocol | `ASCredentialIdentity.h` | Crate exposes concrete wrappers, not the shared protocol/base type. |
-| `ASCredentialIdentityStoreErrorDomain` | constant | `ASCredentialIdentityStore.h` | NSError domain/constants are not exposed as a stable Rust API. |
-| `ASCredentialProviderExtensionContext` | interface | `ASCredentialProviderExtensionContext.h` | Credential Provider extension APIs are not wrapped. |
-| `ASCredentialProviderViewController` | interface | `ASCredentialProviderViewController.h` | Credential Provider extension APIs are not wrapped. |
-| `ASCredentialRequest` | protocol | `ASCredentialRequest.h` | Credential Provider extension APIs are not wrapped. |
-| `ASCredentialRequestType` | enum | `ASCredentialRequest.h` | Credential Provider extension APIs are not wrapped. |
-| `ASExtensionErrorDomain` | constant | `ASExtensionErrors.h` | NSError domain/constants are not exposed as a stable Rust API. |
-| `ASImage` | typedef | `ASFoundation.h` | Used internally by the Swift bridge only; no public Rust alias. |
-| `ASPresentationAnchor` | typedef | `ASFoundation.h` | Used internally by the Swift bridge only; no public Rust alias. |
-| `ASViewController` | typedef | `ASFoundation.h` | Used internally by the Swift bridge only; no public Rust alias. |
-| `ASOneTimeCodeCredential` | interface | `ASOneTimeCodeCredential.h` | Credential-provider credential/request APIs are not wrapped. |
-| `ASOneTimeCodeCredentialRequest` | interface | `ASOneTimeCodeCredentialRequest.h` | Credential-provider request/credential APIs are not wrapped. |
-| `ASPasskeyAssertionCredential` | interface | `ASPasskeyAssertionCredential.h` | Passkey credential-provider request/credential APIs are not wrapped. |
-| `ASPasskeyAssertionCredentialExtensionInput` | interface | `ASPasskeyAssertionCredentialExtensionInput.h` | Passkey credential-provider request/credential APIs are not wrapped. |
-| `ASPasskeyAssertionCredentialExtensionOutput` | interface | `ASPasskeyAssertionCredentialExtensionOutput.h` | Passkey credential-provider request/credential APIs are not wrapped. |
-| `ASPasskeyCredentialRequest` | interface | `ASPasskeyCredentialRequest.h` | Passkey credential-provider request/credential APIs are not wrapped. |
-| `ASPasskeyCredentialRequestParameters` | interface | `ASPasskeyCredentialRequestParameters.h` | Passkey credential-provider request/credential APIs are not wrapped. |
-| `ASPasskeyRegistrationCredential` | interface | `ASPasskeyRegistrationCredential.h` | Passkey credential-provider request/credential APIs are not wrapped. |
-| `ASPasskeyRegistrationCredentialExtensionInput` | interface | `ASPasskeyRegistrationCredentialExtensionInput.h` | Passkey credential-provider request/credential APIs are not wrapped. |
-| `ASPasskeyRegistrationCredentialExtensionOutput` | interface | `ASPasskeyRegistrationCredentialExtensionOutput.h` | Passkey credential-provider request/credential APIs are not wrapped. |
-| `ASPasswordCredentialRequest` | interface | `ASPasswordCredentialRequest.h` | Credential-provider request/credential APIs are not wrapped. |
-| `ASPublicKeyCredential` | protocol | `ASPublicKeyCredential.h` | Crate exposes concrete wrappers, not the shared protocol/base type. |
-| `ASPublicKeyCredentialClientData` | interface | `ASPublicKeyCredentialClientData.h` | Client data is handled as raw bytes, not surfaced as a typed wrapper. |
-| `ASPublicKeyCredentialClientDataCrossOriginValue` | enum | `ASPublicKeyCredentialClientData.h` | Client data is handled as raw bytes, not surfaced as a typed wrapper. |
-| `ASWebAuthenticationPresentationContextProviding` | protocol | `ASWebAuthenticationSession.h` | Hidden behind internal Swift delegates/callbacks; no public Rust protocol wrapper. |
-| `ASWebAuthenticationSessionCompletionHandler` | typedef | `ASWebAuthenticationSession.h` | No public Rust wrapper. |
-| `ASWebAuthenticationSessionErrorDomain` | constant | `ASWebAuthenticationSession.h` | NSError domain/constants are not exposed as a stable Rust API. |
-| `ASWebAuthenticationSessionRequest` | interface | `ASWebAuthenticationSessionRequest.h` | No public Rust wrapper. |
-| `ASWebAuthenticationSessionRequestDelegate` | protocol | `ASWebAuthenticationSessionRequest.h` | Hidden behind internal Swift delegates/callbacks; no public Rust protocol wrapper. |
-| `ASWebAuthenticationSessionWebBrowserSessionHandling` | protocol | `ASWebAuthenticationSessionWebBrowserSessionHandling.h` | Web-browser public-key-credential APIs are not wrapped. |
-| `ASWebAuthenticationSessionWebBrowserSessionManager` | interface | `ASWebAuthenticationSessionWebBrowserSessionManager.h` | Web-browser public-key-credential APIs are not wrapped. |
+| _None_ | - | - | - |
 
 ## ⏭️ EXEMPT
 | Symbol | Kind | Header | Reason | SDK attribute |

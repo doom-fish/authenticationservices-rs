@@ -63,10 +63,43 @@ private func authservicesPRFRegistrationParts(
     )
 }
 
+private func authservicesUserDetectionStatusName(_ status: ASUserDetectionStatus) -> String {
+    switch status {
+    case .unsupported:
+        return "unsupported"
+    case .unknown:
+        return "unknown"
+    case .likelyReal:
+        return "likely_real"
+    @unknown default:
+        return "unknown"
+    }
+}
+
+@available(macOS 14.0, *)
+private func authservicesUserAgeRangeName(_ range: ASUserAgeRange) -> String {
+    switch range {
+    case .unknown:
+        return "unknown"
+    case .child:
+        return "child"
+    case .notChild:
+        return "not_child"
+    @unknown default:
+        return "unknown"
+    }
+}
+
 private func buildAuthorizationPayload(from authorization: ASAuthorization) -> AuthServicesAuthorizationPayload {
     if let credential = authorization.credential as? ASAuthorizationAppleIDCredential {
         let fullName = credential.fullName.map {
             [$0.givenName, $0.familyName].compactMap { $0 }.joined(separator: " ")
+        }
+        let userAgeRange: String?
+        if #available(macOS 14.0, *) {
+            userAgeRange = authservicesUserAgeRangeName(credential.userAgeRange)
+        } else {
+            userAgeRange = nil
         }
         return AuthServicesAuthorizationPayload(
             provider: "apple_id",
@@ -75,6 +108,8 @@ private func buildAuthorizationPayload(from authorization: ASAuthorization) -> A
             fullName: fullName,
             identityToken: credential.identityToken?.base64EncodedString(),
             authorizationCode: credential.authorizationCode?.base64EncodedString(),
+            realUserStatus: authservicesUserDetectionStatusName(credential.realUserStatus),
+            userAgeRange: userAgeRange,
             password: nil,
             credentialID: nil,
             rawAttestationObject: nil,
@@ -102,6 +137,8 @@ private func buildAuthorizationPayload(from authorization: ASAuthorization) -> A
             fullName: nil,
             identityToken: nil,
             authorizationCode: nil,
+            realUserStatus: nil,
+            userAgeRange: nil,
             password: credential.password,
             credentialID: nil,
             rawAttestationObject: nil,
@@ -147,6 +184,8 @@ private func buildAuthorizationPayload(from authorization: ASAuthorization) -> A
             fullName: nil,
             identityToken: nil,
             authorizationCode: nil,
+            realUserStatus: nil,
+            userAgeRange: nil,
             password: nil,
             credentialID: credential.credentialID.base64EncodedString(),
             rawAttestationObject: credential.rawAttestationObject?.base64EncodedString(),
@@ -192,6 +231,8 @@ private func buildAuthorizationPayload(from authorization: ASAuthorization) -> A
             fullName: nil,
             identityToken: nil,
             authorizationCode: nil,
+            realUserStatus: nil,
+            userAgeRange: nil,
             password: nil,
             credentialID: credential.credentialID.base64EncodedString(),
             rawAttestationObject: nil,
@@ -225,6 +266,8 @@ private func buildAuthorizationPayload(from authorization: ASAuthorization) -> A
             fullName: nil,
             identityToken: nil,
             authorizationCode: nil,
+            realUserStatus: nil,
+            userAgeRange: nil,
             password: nil,
             credentialID: credential.credentialID.base64EncodedString(),
             rawAttestationObject: credential.rawAttestationObject?.base64EncodedString(),
@@ -258,6 +301,8 @@ private func buildAuthorizationPayload(from authorization: ASAuthorization) -> A
             fullName: nil,
             identityToken: nil,
             authorizationCode: nil,
+            realUserStatus: nil,
+            userAgeRange: nil,
             password: nil,
             credentialID: credential.credentialID.base64EncodedString(),
             rawAttestationObject: nil,
@@ -284,6 +329,8 @@ private func buildAuthorizationPayload(from authorization: ASAuthorization) -> A
         fullName: nil,
         identityToken: nil,
         authorizationCode: nil,
+        realUserStatus: nil,
+        userAgeRange: nil,
         password: nil,
         credentialID: nil,
         rawAttestationObject: nil,
