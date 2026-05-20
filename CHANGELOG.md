@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.0] - 2026-05-20
+
+### Added
+
+- `async_api` module behind the `async` feature, providing executor-agnostic async wrappers for `ASAuthorizationController` request flows and `ASWebAuthenticationSession` completions. Uses `doom-fish-utils::completion`.
+
 ## [0.2.4] - 2026-05-19
 
 - Bump MSRV from 1.70 to 1.76 to match fleet baseline.

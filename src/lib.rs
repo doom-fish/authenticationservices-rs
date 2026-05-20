@@ -7,6 +7,9 @@
     clippy::unused_self
 )]
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+pub mod async_api;
 pub mod account;
 pub mod account_authentication_modification_controller;
 pub mod authorization;

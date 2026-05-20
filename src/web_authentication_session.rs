@@ -158,9 +158,15 @@ fn session_payload_from_builder(builder: &WebAuthenticationSession) -> WebAuthen
     }
 }
 
-fn create_session_handle(
+pub(crate) fn create_session_handle_with_callback(
     builder: &WebAuthenticationSession,
     refcon: *mut c_void,
+    on_complete: unsafe extern "C" fn(
+        refcon: *mut c_void,
+        url: *mut core::ffi::c_char,
+        code: i32,
+        error_msg: *mut core::ffi::c_char,
+    ),
 ) -> Result<*mut c_void, AuthenticationServicesError> {
     let payload = session_payload_from_builder(builder);
     let payload_json = serde_json::to_string(&payload)
@@ -172,7 +178,7 @@ fn create_session_handle(
         ffi::authservices_web_auth_session_create_from_json(
             payload_c.as_ptr(),
             refcon,
-            Some(on_complete_trampoline),
+            Some(on_complete),
             &mut err_ptr,
         )
     };
@@ -185,6 +191,13 @@ fn create_session_handle(
         return Err(AuthenticationServicesError::FrameworkError(message));
     }
     Ok(handle)
+}
+
+pub(crate) fn create_session_handle(
+    builder: &WebAuthenticationSession,
+    refcon: *mut c_void,
+) -> Result<*mut c_void, AuthenticationServicesError> {
+    create_session_handle_with_callback(builder, refcon, on_complete_trampoline)
 }
 
 fn inspect_handle(handle: *mut c_void) -> Result<WebAuthenticationSessionInfo, AuthenticationServicesError> {
