@@ -1,3 +1,0 @@
-#ifndef AUTH_SERVICES_BRIDGE_H
-#define AUTH_SERVICES_BRIDGE_H
-#endif

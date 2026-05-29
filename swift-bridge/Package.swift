@@ -15,7 +15,6 @@ let package = Package(
     targets: [
         .target(
             name: "AuthServicesBridge",
-            path: "Sources/AuthServicesBridge",
-            publicHeadersPath: "include")
+            path: "Sources/AuthServicesBridge")
     ]
 )
