@@ -6,6 +6,7 @@ use std::ffi::CString;
 use std::ptr;
 use std::sync::{Arc, Mutex};
 
+use doom_fish_utils::panic_safe::catch_user_panic;
 use serde::{Deserialize, Serialize};
 
 use crate::error::AuthenticationServicesError;
@@ -134,16 +135,21 @@ unsafe extern "C" fn on_complete_trampoline(
     code: i32,
     error_msg: *mut core::ffi::c_char,
 ) {
-    let state = unsafe { &*(refcon as *const Mutex<WebSessionState>) };
-    let result = if code == ffi::status::OK {
-        Ok(unsafe { private::take_string(url) })
-    } else {
-        let message = unsafe { private::take_string(error_msg) };
-        Err(AuthenticationServicesError::from_code(code, message))
-    };
-    if let Ok(mut state) = state.lock() {
-        state.result = Some(result);
-    }
+    catch_user_panic(
+        "authenticationservices::on_complete_trampoline",
+        || {
+            let state = unsafe { &*(refcon as *const Mutex<WebSessionState>) };
+            let result = if code == ffi::status::OK {
+                Ok(unsafe { private::take_string(url) })
+            } else {
+                let message = unsafe { private::take_string(error_msg) };
+                Err(AuthenticationServicesError::from_code(code, message))
+            };
+            if let Ok(mut state) = state.lock() {
+                state.result = Some(result);
+            }
+        },
+    );
 }
 
 fn session_payload_from_builder(builder: &WebAuthenticationSession) -> WebAuthenticationSessionPayload {

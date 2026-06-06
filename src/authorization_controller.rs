@@ -7,6 +7,8 @@ use std::sync::{Arc, Mutex};
 
 use serde::Deserialize;
 
+use doom_fish_utils::panic_safe::catch_user_panic;
+
 use crate::authorization_apple_id_provider::AppleIdRequest;
 use crate::authorization_types::{UserAgeRange, UserDetectionStatus};
 use crate::authorization_passkey::{
@@ -267,13 +269,18 @@ impl AuthorizationGuard {
 }
 
 unsafe extern "C" fn on_success_trampoline(refcon: *mut c_void, json: *mut core::ffi::c_char) {
-    let state = unsafe { &*(refcon as *const Mutex<CallbackState>) };
-    let json = unsafe { private::take_string(json) };
-    let result = serde_json::from_str(&json)
-        .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()));
-    if let Ok(mut state) = state.lock() {
-        state.result = Some(result);
-    }
+    catch_user_panic(
+        "authenticationservices::on_success_trampoline",
+        || {
+            let state = unsafe { &*(refcon as *const Mutex<CallbackState>) };
+            let json = unsafe { private::take_string(json) };
+            let result = serde_json::from_str(&json)
+                .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()));
+            if let Ok(mut state) = state.lock() {
+                state.result = Some(result);
+            }
+        },
+    );
 }
 
 unsafe extern "C" fn on_error_trampoline(
@@ -281,12 +288,17 @@ unsafe extern "C" fn on_error_trampoline(
     code: i32,
     msg: *mut core::ffi::c_char,
 ) {
-    let state = unsafe { &*(refcon as *const Mutex<CallbackState>) };
-    let message = unsafe { private::take_string(msg) };
-    let error = AuthenticationServicesError::from_code(code, message);
-    if let Ok(mut state) = state.lock() {
-        state.result = Some(Err(error));
-    }
+    catch_user_panic(
+        "authenticationservices::on_error_trampoline",
+        || {
+            let state = unsafe { &*(refcon as *const Mutex<CallbackState>) };
+            let message = unsafe { private::take_string(msg) };
+            let error = AuthenticationServicesError::from_code(code, message);
+            if let Ok(mut state) = state.lock() {
+                state.result = Some(Err(error));
+            }
+        },
+    );
 }
 
 /// Zero-sized controller builder.
