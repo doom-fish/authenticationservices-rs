@@ -1,6 +1,7 @@
 //! \[`ASPasswordCredential`\] helpers.
 
 use std::ffi::CString;
+use std::fmt;
 use std::ptr;
 
 use serde::Deserialize;
@@ -9,17 +10,26 @@ use crate::error::AuthenticationServicesError;
 use crate::ffi;
 use crate::private;
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct PasswordCredentialPayload {
     user: String,
     password: String,
 }
 
 /// A decoded `ASPasswordCredential`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PasswordCredential {
     pub user: String,
     pub password: String,
+}
+
+impl fmt::Debug for PasswordCredential {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PasswordCredential")
+            .field("user", &self.user)
+            .field("password", &private::REDACTED)
+            .finish()
+    }
 }
 
 impl PasswordCredential {

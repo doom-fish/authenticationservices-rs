@@ -9,3 +9,5 @@ pub unsafe fn take_string(ptr: *mut c_char) -> String {
     doom_fish_utils::ffi_string::take_owned_cstring_c(ptr, |p| ffi::authservices_string_free(p))
         .unwrap_or_default()
 }
+
+pub const REDACTED: &str = "<redacted>";

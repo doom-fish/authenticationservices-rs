@@ -10,6 +10,7 @@
 
 use core::ffi::c_void;
 use std::ffi::CString;
+use std::fmt;
 use std::ptr;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -120,10 +121,19 @@ pub struct LargeBlobAssertionInput {
 }
 
 /// `ASAuthorizationPublicKeyCredentialLargeBlobAssertionOutput.OperationResult`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum LargeBlobAssertionOutputResult {
     Read(Vec<u8>),
     Write(bool),
+}
+
+impl fmt::Debug for LargeBlobAssertionOutputResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Read(_) => f.debug_tuple("Read").field(&private::REDACTED).finish(),
+            Self::Write(succeeded) => f.debug_tuple("Write").field(succeeded).finish(),
+        }
+    }
 }
 
 /// `ASAuthorizationPublicKeyCredentialLargeBlobAssertionOutput`.
@@ -161,11 +171,21 @@ pub struct PrfAssertionInput {
 }
 
 /// Shared PRF output shape.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PrfOutput {
     pub first: Option<Vec<u8>>,
     pub second: Option<Vec<u8>>,
     pub is_supported: Option<bool>,
+}
+
+impl fmt::Debug for PrfOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PrfOutput")
+            .field("first", &self.first.as_ref().map(|_| private::REDACTED))
+            .field("second", &self.second.as_ref().map(|_| private::REDACTED))
+            .field("is_supported", &self.is_supported)
+            .finish()
+    }
 }
 
 /// Full platform-registration request configuration.
@@ -230,7 +250,7 @@ pub struct PlatformPublicKeyCredentialRegistration {
 }
 
 /// `ASAuthorizationPlatformPublicKeyCredentialAssertion`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PlatformPublicKeyCredentialAssertion {
     pub credential_id: Vec<u8>,
     pub raw_authenticator_data: Vec<u8>,
@@ -239,6 +259,20 @@ pub struct PlatformPublicKeyCredentialAssertion {
     pub attachment: Option<PublicKeyCredentialAttachment>,
     pub large_blob: Option<LargeBlobAssertionOutput>,
     pub prf: Option<PrfOutput>,
+}
+
+impl fmt::Debug for PlatformPublicKeyCredentialAssertion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PlatformPublicKeyCredentialAssertion")
+            .field("credential_id", &self.credential_id)
+            .field("raw_authenticator_data", &self.raw_authenticator_data)
+            .field("signature", &private::REDACTED)
+            .field("user_id", &private::REDACTED)
+            .field("attachment", &self.attachment)
+            .field("large_blob", &self.large_blob)
+            .field("prf", &self.prf)
+            .finish()
+    }
 }
 
 /// `ASAuthorizationSecurityKeyPublicKeyCredentialRegistration`.
@@ -250,13 +284,25 @@ pub struct SecurityKeyPublicKeyCredentialRegistration {
 }
 
 /// `ASAuthorizationSecurityKeyPublicKeyCredentialAssertion`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SecurityKeyPublicKeyCredentialAssertion {
     pub credential_id: Vec<u8>,
     pub raw_authenticator_data: Vec<u8>,
     pub signature: Vec<u8>,
     pub user_id: Vec<u8>,
     pub used_app_id: Option<bool>,
+}
+
+impl fmt::Debug for SecurityKeyPublicKeyCredentialAssertion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SecurityKeyPublicKeyCredentialAssertion")
+            .field("credential_id", &self.credential_id)
+            .field("raw_authenticator_data", &self.raw_authenticator_data)
+            .field("signature", &private::REDACTED)
+            .field("user_id", &private::REDACTED)
+            .field("used_app_id", &self.used_app_id)
+            .finish()
+    }
 }
 
 impl Default for PlatformPasskeyRegistrationOptions {

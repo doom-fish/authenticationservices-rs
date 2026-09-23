@@ -1,6 +1,7 @@
 //! \[`ASAuthorizationController`\] and decoded authorization results.
 
 use core::ffi::c_void;
+use std::fmt;
 use std::ops::{BitOr, BitOrAssign};
 use std::ptr;
 use std::sync::{Mutex, PoisonError};
@@ -25,7 +26,7 @@ use crate::password_credential::PasswordCredential;
 use crate::private;
 
 /// Decoded Apple ID credential.
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Deserialize, PartialEq, Eq)]
 pub struct AppleIdCredential {
     #[serde(rename = "userIdentifier")]
     pub user_identifier: Option<String>,
@@ -43,7 +44,7 @@ pub struct AppleIdCredential {
 }
 
 /// Generic authorization result from any provider.
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Deserialize, PartialEq, Eq)]
 pub struct Authorization {
     pub provider: String,
     #[serde(rename = "userIdentifier")]
@@ -87,6 +88,51 @@ pub struct Authorization {
     pub prf_second: Option<String>,
     #[serde(rename = "prfSupported")]
     pub prf_supported: Option<bool>,
+}
+
+impl fmt::Debug for AppleIdCredential {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AppleIdCredential")
+            .field("user_identifier", &self.user_identifier)
+            .field("email", &self.email)
+            .field("full_name", &self.full_name)
+            .field("identity_token", &self.identity_token.as_ref().map(|_| private::REDACTED))
+            .field("authorization_code", &self.authorization_code.as_ref().map(|_| private::REDACTED))
+            .field("real_user_status", &self.real_user_status)
+            .field("user_age_range", &self.user_age_range)
+            .finish()
+    }
+}
+
+impl fmt::Debug for Authorization {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Authorization")
+            .field("provider", &self.provider)
+            .field("user_identifier", &self.user_identifier)
+            .field("email", &self.email)
+            .field("full_name", &self.full_name)
+            .field("identity_token", &self.identity_token.as_ref().map(|_| private::REDACTED))
+            .field("authorization_code", &self.authorization_code.as_ref().map(|_| private::REDACTED))
+            .field("real_user_status", &self.real_user_status)
+            .field("user_age_range", &self.user_age_range)
+            .field("password", &self.password.as_ref().map(|_| private::REDACTED))
+            .field("credential_id", &self.credential_id)
+            .field("raw_attestation_object", &self.raw_attestation_object)
+            .field("raw_authenticator_data", &self.raw_authenticator_data)
+            .field("signature", &self.signature.as_ref().map(|_| private::REDACTED))
+            .field("user_id", &self.user_id.as_ref().map(|_| private::REDACTED))
+            .field("attachment", &self.attachment)
+            .field("used_app_id", &self.used_app_id)
+            .field("transports", &self.transports)
+            .field("large_blob_result_kind", &self.large_blob_result_kind)
+            .field("large_blob_data", &self.large_blob_data.as_ref().map(|_| private::REDACTED))
+            .field("large_blob_write_succeeded", &self.large_blob_write_succeeded)
+            .field("large_blob_supported", &self.large_blob_supported)
+            .field("prf_first", &self.prf_first.as_ref().map(|_| private::REDACTED))
+            .field("prf_second", &self.prf_second.as_ref().map(|_| private::REDACTED))
+            .field("prf_supported", &self.prf_supported)
+            .finish()
+    }
 }
 
 impl Authorization {
