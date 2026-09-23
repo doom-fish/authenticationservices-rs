@@ -2,8 +2,73 @@ import CryptoKit
 import Foundation
 import AuthenticationServices
 
-private func authservicesUnsupportedClientData() -> AuthServicesBridgeError {
-    AuthServicesBridgeError.notSupported("ASPublicKeyCredentialClientData is not yet bridged in authenticationservices-rs")
+private struct AuthServicesClientDataPayload: Codable {
+    let challenge: String
+    let origin: String
+    let topOrigin: String?
+    let crossOrigin: String?
+}
+
+private func authservicesRequiredChallenge(_ value: String?) throws -> Data {
+    guard let value else {
+        throw AuthServicesBridgeError.invalidArgument("a WebAuthn challenge is required")
+    }
+    let challenge = try authservicesDecodeBase64(value, field: "challenge")
+    guard !challenge.isEmpty else {
+        throw AuthServicesBridgeError.invalidArgument("the WebAuthn challenge must not be empty")
+    }
+    return challenge
+}
+
+@available(macOS 13.5, *)
+private func authservicesClientData(
+    _ payload: AuthServicesClientDataPayload
+) throws -> ASPublicKeyCredentialClientData {
+    let crossOrigin: ASPublicKeyCredentialClientData.CrossOriginValue?
+    switch payload.crossOrigin {
+    case nil:
+        crossOrigin = nil
+    case "cross_origin":
+        crossOrigin = .crossOrigin
+    case "same_origin_with_ancestors":
+        crossOrigin = .sameOriginWithAncestors
+    case let other?:
+        throw AuthServicesBridgeError.invalidArgument("unknown client-data crossOrigin value: \(other)")
+    }
+    return ASPublicKeyCredentialClientData(
+        challenge: try authservicesRequiredChallenge(payload.challenge),
+        origin: payload.origin,
+        topOrigin: payload.topOrigin,
+        crossOrigin: crossOrigin
+    )
+}
+
+@available(macOS 13.5, *)
+private func authservicesClientDataPayload(
+    _ clientData: ASPublicKeyCredentialClientData?
+) -> AuthServicesClientDataPayload? {
+    guard let clientData else { return nil }
+    var crossOrigin: String?
+    if let value = clientData.crossOrigin {
+        switch value {
+        case .crossOrigin:
+            crossOrigin = "cross_origin"
+        case .sameOriginWithAncestors:
+            crossOrigin = "same_origin_with_ancestors"
+        @unknown default:
+            crossOrigin = nil
+        }
+    }
+    return AuthServicesClientDataPayload(
+        challenge: clientData.challenge.base64EncodedString(),
+        origin: clientData.origin,
+        topOrigin: clientData.topOrigin,
+        crossOrigin: crossOrigin
+    )
+}
+
+private func authservicesClientDataUnavailable() -> AuthServicesBridgeError {
+    AuthServicesBridgeError.notSupported("WebAuthn client data requires macOS 13.5")
 }
 
 @available(macOS 15.0, *)
@@ -96,7 +161,7 @@ private struct AuthServicesLargeBlobAssertionInputPayload: Codable {
 private struct AuthServicesPlatformRegistrationRequestPayload: Codable {
     let relyingPartyIdentifier: String
     let challenge: String?
-    let clientData: String?
+    let clientData: AuthServicesClientDataPayload?
     let userID: String
     let name: String
     let displayName: String?
@@ -111,7 +176,7 @@ private struct AuthServicesPlatformRegistrationRequestPayload: Codable {
 private struct AuthServicesPlatformAssertionRequestPayload: Codable {
     let relyingPartyIdentifier: String
     let challenge: String?
-    let clientData: String?
+    let clientData: AuthServicesClientDataPayload?
     let allowedCredentials: [AuthServicesPlatformCredentialDescriptorPayload]?
     let userVerificationPreference: String?
     let largeBlob: AuthServicesLargeBlobAssertionInputPayload?
@@ -121,7 +186,7 @@ private struct AuthServicesPlatformAssertionRequestPayload: Codable {
 private struct AuthServicesSecurityKeyRegistrationRequestPayload: Codable {
     let relyingPartyIdentifier: String
     let challenge: String?
-    let clientData: String?
+    let clientData: AuthServicesClientDataPayload?
     let userID: String
     let name: String
     let displayName: String?
@@ -135,7 +200,7 @@ private struct AuthServicesSecurityKeyRegistrationRequestPayload: Codable {
 private struct AuthServicesSecurityKeyAssertionRequestPayload: Codable {
     let relyingPartyIdentifier: String
     let challenge: String?
-    let clientData: String?
+    let clientData: AuthServicesClientDataPayload?
     let allowedCredentials: [AuthServicesSecurityKeyCredentialDescriptorPayload]?
     let userVerificationPreference: String?
     let appID: String?
@@ -417,7 +482,12 @@ private func authservicesCreateSecurityDescriptor(
 private func authservicesBuildPlatformRegistrationRequestPayload(
     _ request: ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest
 ) -> AuthServicesPlatformRegistrationRequestPayload {
-    let clientData: String? = nil
+    let clientData: AuthServicesClientDataPayload?
+    if #available(macOS 13.5, *) {
+        clientData = authservicesClientDataPayload(request.clientData)
+    } else {
+        clientData = nil
+    }
     let requestStyle: String?
     if #available(macOS 15.0, *) {
         requestStyle = authservicesPlatformRequestStyleName(request.requestStyle)
@@ -461,9 +531,6 @@ private func authservicesApplyPlatformRegistrationRequestPayload(
     request.displayName = payload.displayName ?? payload.name
     request.userVerificationPreference = .init(rawValue: payload.userVerificationPreference ?? "preferred")
     request.attestationPreference = .init(rawValue: payload.attestationPreference ?? "none")
-    if payload.clientData != nil {
-        throw authservicesUnsupportedClientData()
-    }
     if let requestStyle = payload.requestStyle {
         guard #available(macOS 15.0, *) else {
             throw AuthServicesBridgeError.notSupported("platform passkey requestStyle requires macOS 15.0")
@@ -485,14 +552,21 @@ private func authservicesCreatePlatformRegistrationRequest(
         relyingPartyIdentifier: payload.relyingPartyIdentifier
     )
     let request: ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest
-    if payload.clientData != nil {
-        throw authservicesUnsupportedClientData()
+    let userID = try authservicesDecodeBase64(payload.userID, field: "userID")
+    if let clientData = payload.clientData {
+        guard #available(macOS 13.5, *) else { throw authservicesClientDataUnavailable() }
+        request = provider.createCredentialRegistrationRequest(
+            clientData: try authservicesClientData(clientData),
+            name: payload.name,
+            userID: userID
+        )
+    } else {
+        request = provider.createCredentialRegistrationRequest(
+            challenge: try authservicesRequiredChallenge(payload.challenge),
+            name: payload.name,
+            userID: userID
+        )
     }
-    request = provider.createCredentialRegistrationRequest(
-        challenge: try authservicesDecodeBase64(payload.challenge ?? "", field: "challenge"),
-        name: payload.name,
-        userID: try authservicesDecodeBase64(payload.userID, field: "userID")
-    )
     try authservicesApplyPlatformRegistrationRequestPayload(payload, to: request)
     return request
 }
@@ -500,7 +574,12 @@ private func authservicesCreatePlatformRegistrationRequest(
 private func authservicesBuildPlatformAssertionRequestPayload(
     _ request: ASAuthorizationPlatformPublicKeyCredentialAssertionRequest
 ) -> AuthServicesPlatformAssertionRequestPayload {
-    let clientData: String? = nil
+    let clientData: AuthServicesClientDataPayload?
+    if #available(macOS 13.5, *) {
+        clientData = authservicesClientDataPayload(request.clientData)
+    } else {
+        clientData = nil
+    }
     let prfPayload: AuthServicesPRFAssertionInputPayload?
     if #available(macOS 15.0, *), let prf = request.prf {
         let perCredentialInputValues = prf.perCredentialInputValues?.map { entry in
@@ -540,9 +619,6 @@ private func authservicesApplyPlatformAssertionRequestPayload(
         request.allowedCredentials = try allowedCredentials.map(authservicesCreatePlatformDescriptor)
     }
     request.userVerificationPreference = .init(rawValue: payload.userVerificationPreference ?? "preferred")
-    if payload.clientData != nil {
-        throw authservicesUnsupportedClientData()
-    }
     if #available(macOS 14.0, *), let largeBlob = try authservicesMakeLargeBlobAssertionInput(payload.largeBlob) {
         request.largeBlob = largeBlob
     }
@@ -558,12 +634,14 @@ private func authservicesCreatePlatformAssertionRequest(
         relyingPartyIdentifier: payload.relyingPartyIdentifier
     )
     let request: ASAuthorizationPlatformPublicKeyCredentialAssertionRequest
-    if payload.clientData != nil {
-        throw authservicesUnsupportedClientData()
+    if let clientData = payload.clientData {
+        guard #available(macOS 13.5, *) else { throw authservicesClientDataUnavailable() }
+        request = provider.createCredentialAssertionRequest(clientData: try authservicesClientData(clientData))
+    } else {
+        request = provider.createCredentialAssertionRequest(
+            challenge: try authservicesRequiredChallenge(payload.challenge)
+        )
     }
-    request = provider.createCredentialAssertionRequest(
-        challenge: try authservicesDecodeBase64(payload.challenge ?? "", field: "challenge")
-    )
     try authservicesApplyPlatformAssertionRequestPayload(payload, to: request)
     return request
 }
@@ -571,7 +649,12 @@ private func authservicesCreatePlatformAssertionRequest(
 private func authservicesBuildSecurityKeyRegistrationRequestPayload(
     _ request: ASAuthorizationSecurityKeyPublicKeyCredentialRegistrationRequest
 ) -> AuthServicesSecurityKeyRegistrationRequestPayload {
-    let clientData: String? = nil
+    let clientData: AuthServicesClientDataPayload?
+    if #available(macOS 14.4, *) {
+        clientData = authservicesClientDataPayload(request.clientData)
+    } else {
+        clientData = nil
+    }
     return AuthServicesSecurityKeyRegistrationRequestPayload(
         relyingPartyIdentifier: request.relyingPartyIdentifier,
         challenge: request.challenge.base64EncodedString(),
@@ -602,9 +685,6 @@ private func authservicesApplySecurityKeyRegistrationRequestPayload(
             ASAuthorizationPublicKeyCredentialParameters(algorithm: .init(rawValue: $0))
         }
     }
-    if payload.clientData != nil {
-        throw authservicesUnsupportedClientData()
-    }
 }
 
 private func authservicesCreateSecurityKeyRegistrationRequest(
@@ -615,15 +695,25 @@ private func authservicesCreateSecurityKeyRegistrationRequest(
     )
     let displayName = payload.displayName ?? payload.name
     let request: ASAuthorizationSecurityKeyPublicKeyCredentialRegistrationRequest
-    if payload.clientData != nil {
-        throw authservicesUnsupportedClientData()
+    let userID = try authservicesDecodeBase64(payload.userID, field: "userID")
+    if let clientData = payload.clientData {
+        guard #available(macOS 14.4, *) else {
+            throw AuthServicesBridgeError.notSupported("security-key WebAuthn client data requires macOS 14.4")
+        }
+        request = provider.createCredentialRegistrationRequest(
+            clientData: try authservicesClientData(clientData),
+            displayName: displayName,
+            name: payload.name,
+            userID: userID
+        )
+    } else {
+        request = provider.createCredentialRegistrationRequest(
+            challenge: try authservicesRequiredChallenge(payload.challenge),
+            displayName: displayName,
+            name: payload.name,
+            userID: userID
+        )
     }
-    request = provider.createCredentialRegistrationRequest(
-        challenge: try authservicesDecodeBase64(payload.challenge ?? "", field: "challenge"),
-        displayName: displayName,
-        name: payload.name,
-        userID: try authservicesDecodeBase64(payload.userID, field: "userID")
-    )
     try authservicesApplySecurityKeyRegistrationRequestPayload(payload, to: request)
     return request
 }
@@ -631,7 +721,12 @@ private func authservicesCreateSecurityKeyRegistrationRequest(
 private func authservicesBuildSecurityKeyAssertionRequestPayload(
     _ request: ASAuthorizationSecurityKeyPublicKeyCredentialAssertionRequest
 ) -> AuthServicesSecurityKeyAssertionRequestPayload {
-    let clientData: String? = nil
+    let clientData: AuthServicesClientDataPayload?
+    if #available(macOS 14.4, *) {
+        clientData = authservicesClientDataPayload(request.clientData)
+    } else {
+        clientData = nil
+    }
     return AuthServicesSecurityKeyAssertionRequestPayload(
         relyingPartyIdentifier: request.relyingPartyIdentifier,
         challenge: request.challenge.base64EncodedString(),
@@ -661,9 +756,6 @@ private func authservicesApplySecurityKeyAssertionRequestPayload(
         }
         request.appID = appID
     }
-    if payload.clientData != nil {
-        throw authservicesUnsupportedClientData()
-    }
 }
 
 private func authservicesCreateSecurityKeyAssertionRequest(
@@ -673,12 +765,16 @@ private func authservicesCreateSecurityKeyAssertionRequest(
         relyingPartyIdentifier: payload.relyingPartyIdentifier
     )
     let request: ASAuthorizationSecurityKeyPublicKeyCredentialAssertionRequest
-    if payload.clientData != nil {
-        throw authservicesUnsupportedClientData()
+    if let clientData = payload.clientData {
+        guard #available(macOS 14.4, *) else {
+            throw AuthServicesBridgeError.notSupported("security-key WebAuthn client data requires macOS 14.4")
+        }
+        request = provider.createCredentialAssertionRequest(clientData: try authservicesClientData(clientData))
+    } else {
+        request = provider.createCredentialAssertionRequest(
+            challenge: try authservicesRequiredChallenge(payload.challenge)
+        )
     }
-    request = provider.createCredentialAssertionRequest(
-        challenge: try authservicesDecodeBase64(payload.challenge ?? "", field: "challenge")
-    )
     try authservicesApplySecurityKeyAssertionRequestPayload(payload, to: request)
     return request
 }
@@ -886,6 +982,40 @@ public func authservices_passkey_assertion_request_update_from_json(
         return AUTHSERVICES_OK
     } catch {
         return authservicesFail(outError, with: error)
+    }
+}
+
+@_cdecl("authservices_passkey_registration_request_create_from_json")
+public func authservices_passkey_registration_request_create_from_json(
+    _ payloadJson: UnsafePointer<CChar>?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> UnsafeMutableRawPointer? {
+    do {
+        let payload = try authservicesDecodeJSON(
+            payloadJson,
+            as: AuthServicesPlatformRegistrationRequestPayload.self
+        )
+        return authservices_retain(ASPasskeyRegistrationRequestHandle(try authservicesCreatePlatformRegistrationRequest(payload)))
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
+}
+
+@_cdecl("authservices_passkey_assertion_request_create_from_json")
+public func authservices_passkey_assertion_request_create_from_json(
+    _ payloadJson: UnsafePointer<CChar>?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> UnsafeMutableRawPointer? {
+    do {
+        let payload = try authservicesDecodeJSON(
+            payloadJson,
+            as: AuthServicesPlatformAssertionRequestPayload.self
+        )
+        return authservices_retain(ASPasskeyAssertionRequestHandle(try authservicesCreatePlatformAssertionRequest(payload)))
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
     }
 }
 

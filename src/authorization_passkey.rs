@@ -17,6 +17,9 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
 
 use crate::authorization_provider::RequestKind;
+use crate::credential_provider::{
+    PublicKeyCredentialClientData, PublicKeyCredentialClientDataCrossOriginValue,
+};
 use crate::error::AuthenticationServicesError;
 use crate::ffi;
 use crate::private;
@@ -192,7 +195,7 @@ impl fmt::Debug for PrfOutput {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlatformPasskeyRegistrationOptions {
     pub challenge: Option<Vec<u8>>,
-    pub client_data: Option<Vec<u8>>,
+    pub client_data: Option<PublicKeyCredentialClientData>,
     pub user_id: Vec<u8>,
     pub user_name: String,
     pub user_display_name: Option<String>,
@@ -207,7 +210,7 @@ pub struct PlatformPasskeyRegistrationOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlatformPasskeyAssertionOptions {
     pub challenge: Option<Vec<u8>>,
-    pub client_data: Option<Vec<u8>>,
+    pub client_data: Option<PublicKeyCredentialClientData>,
     pub allowed_credentials: Vec<PlatformCredentialDescriptor>,
     pub user_verification_preference: Option<PublicKeyCredentialUserVerificationPreference>,
     pub large_blob: Option<LargeBlobAssertionInput>,
@@ -218,7 +221,7 @@ pub struct PlatformPasskeyAssertionOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecurityKeyRegistrationOptions {
     pub challenge: Option<Vec<u8>>,
-    pub client_data: Option<Vec<u8>>,
+    pub client_data: Option<PublicKeyCredentialClientData>,
     pub user_id: Vec<u8>,
     pub user_name: String,
     pub user_display_name: Option<String>,
@@ -233,7 +236,7 @@ pub struct SecurityKeyRegistrationOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecurityKeyAssertionOptions {
     pub challenge: Option<Vec<u8>>,
-    pub client_data: Option<Vec<u8>>,
+    pub client_data: Option<PublicKeyCredentialClientData>,
     pub allowed_credentials: Vec<SecurityKeyCredentialDescriptor>,
     pub user_verification_preference: Option<PublicKeyCredentialUserVerificationPreference>,
     pub app_id: Option<String>,
@@ -414,12 +417,22 @@ struct LargeBlobAssertionInputPayload {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+struct ClientDataPayload {
+    challenge: String,
+    origin: String,
+    #[serde(rename = "topOrigin")]
+    top_origin: Option<String>,
+    #[serde(rename = "crossOrigin")]
+    cross_origin: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct PlatformRegistrationRequestPayload {
     #[serde(rename = "relyingPartyIdentifier")]
     relying_party_identifier: String,
     challenge: Option<String>,
     #[serde(rename = "clientData")]
-    client_data: Option<String>,
+    client_data: Option<ClientDataPayload>,
     #[serde(rename = "userID")]
     user_id: String,
     name: String,
@@ -444,7 +457,7 @@ struct PlatformAssertionRequestPayload {
     relying_party_identifier: String,
     challenge: Option<String>,
     #[serde(rename = "clientData")]
-    client_data: Option<String>,
+    client_data: Option<ClientDataPayload>,
     #[serde(rename = "allowedCredentials")]
     allowed_credentials: Option<Vec<PlatformCredentialDescriptorPayload>>,
     #[serde(rename = "userVerificationPreference")]
@@ -460,7 +473,7 @@ struct SecurityKeyRegistrationRequestPayload {
     relying_party_identifier: String,
     challenge: Option<String>,
     #[serde(rename = "clientData")]
-    client_data: Option<String>,
+    client_data: Option<ClientDataPayload>,
     #[serde(rename = "userID")]
     user_id: String,
     name: String,
@@ -484,13 +497,73 @@ struct SecurityKeyAssertionRequestPayload {
     relying_party_identifier: String,
     challenge: Option<String>,
     #[serde(rename = "clientData")]
-    client_data: Option<String>,
+    client_data: Option<ClientDataPayload>,
     #[serde(rename = "allowedCredentials")]
     allowed_credentials: Option<Vec<SecurityKeyCredentialDescriptorPayload>>,
     #[serde(rename = "userVerificationPreference")]
     user_verification_preference: Option<String>,
     #[serde(rename = "appID")]
     app_id: Option<String>,
+}
+
+fn client_data_to_payload(client_data: &PublicKeyCredentialClientData) -> ClientDataPayload {
+    ClientDataPayload {
+        challenge: encode_bytes(&client_data.challenge),
+        origin: client_data.origin.clone(),
+        top_origin: client_data.top_origin.clone(),
+        cross_origin: match client_data.cross_origin {
+            PublicKeyCredentialClientDataCrossOriginValue::NotSet => None,
+            PublicKeyCredentialClientDataCrossOriginValue::CrossOrigin => Some("cross_origin".to_owned()),
+            PublicKeyCredentialClientDataCrossOriginValue::SameOriginWithAncestors => {
+                Some("same_origin_with_ancestors".to_owned())
+            }
+        },
+    }
+}
+
+fn client_data_from_payload(
+    payload: ClientDataPayload,
+) -> Result<PublicKeyCredentialClientData, AuthenticationServicesError> {
+    let cross_origin = match payload.cross_origin.as_deref() {
+        None => PublicKeyCredentialClientDataCrossOriginValue::NotSet,
+        Some("cross_origin") => PublicKeyCredentialClientDataCrossOriginValue::CrossOrigin,
+        Some("same_origin_with_ancestors") => {
+            PublicKeyCredentialClientDataCrossOriginValue::SameOriginWithAncestors
+        }
+        Some(other) => {
+            return Err(AuthenticationServicesError::Unknown(format!(
+                "unknown client-data crossOrigin value: {other}"
+            )))
+        }
+    };
+    Ok(PublicKeyCredentialClientData {
+        challenge: decode_bytes(&payload.challenge)?,
+        origin: payload.origin,
+        top_origin: payload.top_origin,
+        cross_origin,
+    })
+}
+
+fn validate_challenge(
+    challenge: Option<&[u8]>,
+    client_data: Option<&PublicKeyCredentialClientData>,
+) -> Result<(), AuthenticationServicesError> {
+    let challenge = match (challenge, client_data) {
+        (Some(challenge), Some(client_data)) if challenge != client_data.challenge.as_slice() => {
+            return Err(AuthenticationServicesError::InvalidArgument(
+                "challenge and client_data.challenge must match".into(),
+            ));
+        }
+        (_, Some(client_data)) => client_data.challenge.as_slice(),
+        (Some(challenge), None) => challenge,
+        (None, None) => &[],
+    };
+    if challenge.is_empty() {
+        return Err(AuthenticationServicesError::InvalidArgument(
+            "a non-empty WebAuthn challenge is required".into(),
+        ));
+    }
+    Ok(())
 }
 
 fn encode_bytes(bytes: &[u8]) -> String {
@@ -746,7 +819,7 @@ fn platform_registration_options_to_payload(
     PlatformRegistrationRequestPayload {
         relying_party_identifier: relying_party_identifier.to_owned(),
         challenge: options.challenge.as_deref().map(encode_bytes),
-        client_data: options.client_data.as_deref().map(encode_bytes),
+        client_data: options.client_data.as_ref().map(client_data_to_payload),
         user_id: encode_bytes(&options.user_id),
         name: options.user_name.clone(),
         display_name: options.user_display_name.clone(),
@@ -776,7 +849,7 @@ fn platform_registration_options_from_payload(
         payload.relying_party_identifier,
         PlatformPasskeyRegistrationOptions {
             challenge: decode_optional_bytes(payload.challenge)?,
-            client_data: decode_optional_bytes(payload.client_data)?,
+            client_data: payload.client_data.map(client_data_from_payload).transpose()?,
             user_id: decode_bytes(&payload.user_id)?,
             user_name: payload.name,
             user_display_name: payload.display_name,
@@ -810,7 +883,7 @@ fn platform_assertion_options_to_payload(
     PlatformAssertionRequestPayload {
         relying_party_identifier: relying_party_identifier.to_owned(),
         challenge: options.challenge.as_deref().map(encode_bytes),
-        client_data: options.client_data.as_deref().map(encode_bytes),
+        client_data: options.client_data.as_ref().map(client_data_to_payload),
         allowed_credentials: (!options.allowed_credentials.is_empty()).then(|| {
             options
                 .allowed_credentials
@@ -868,7 +941,7 @@ fn platform_assertion_options_from_payload(
         payload.relying_party_identifier,
         PlatformPasskeyAssertionOptions {
             challenge: decode_optional_bytes(payload.challenge)?,
-            client_data: decode_optional_bytes(payload.client_data)?,
+            client_data: payload.client_data.map(client_data_from_payload).transpose()?,
             allowed_credentials: payload
                 .allowed_credentials
                 .unwrap_or_default()
@@ -893,7 +966,7 @@ fn security_registration_options_to_payload(
     SecurityKeyRegistrationRequestPayload {
         relying_party_identifier: relying_party_identifier.to_owned(),
         challenge: options.challenge.as_deref().map(encode_bytes),
-        client_data: options.client_data.as_deref().map(encode_bytes),
+        client_data: options.client_data.as_ref().map(client_data_to_payload),
         user_id: encode_bytes(&options.user_id),
         name: options.user_name.clone(),
         display_name: options.user_display_name.clone(),
@@ -929,7 +1002,7 @@ fn security_registration_options_from_payload(
         payload.relying_party_identifier,
         SecurityKeyRegistrationOptions {
             challenge: decode_optional_bytes(payload.challenge)?,
-            client_data: decode_optional_bytes(payload.client_data)?,
+            client_data: payload.client_data.map(client_data_from_payload).transpose()?,
             user_id: decode_bytes(&payload.user_id)?,
             user_name: payload.name,
             user_display_name: payload.display_name,
@@ -971,7 +1044,7 @@ fn security_assertion_options_to_payload(
     SecurityKeyAssertionRequestPayload {
         relying_party_identifier: relying_party_identifier.to_owned(),
         challenge: options.challenge.as_deref().map(encode_bytes),
-        client_data: options.client_data.as_deref().map(encode_bytes),
+        client_data: options.client_data.as_ref().map(client_data_to_payload),
         allowed_credentials: (!options.allowed_credentials.is_empty()).then(|| {
             options
                 .allowed_credentials
@@ -994,7 +1067,7 @@ fn security_assertion_options_from_payload(
         payload.relying_party_identifier,
         SecurityKeyAssertionOptions {
             challenge: decode_optional_bytes(payload.challenge)?,
-            client_data: decode_optional_bytes(payload.client_data)?,
+            client_data: payload.client_data.map(client_data_from_payload).transpose()?,
             allowed_credentials: payload
                 .allowed_credentials
                 .unwrap_or_default()
@@ -1138,6 +1211,7 @@ impl PlatformPublicKeyCredentialProvider {
         user_name: &str,
         user_display_name: Option<&str>,
     ) -> Result<PasskeyRegistrationRequest, AuthenticationServicesError> {
+        validate_challenge(Some(challenge), None)?;
         let rp_c = CString::new(self.relying_party_identifier.as_str())
             .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
         let challenge_c = CString::new(encode_bytes(challenge))
@@ -1180,20 +1254,38 @@ impl PlatformPublicKeyCredentialProvider {
         &self,
         options: &PlatformPasskeyRegistrationOptions,
     ) -> Result<PasskeyRegistrationRequest, AuthenticationServicesError> {
-        let request = self.create_registration_request(
-            options.challenge.as_deref().unwrap_or_default(),
-            &options.user_id,
-            &options.user_name,
-            options.user_display_name.as_deref(),
-        )?;
-        request.update(options)?;
-        Ok(request)
+        validate_challenge(options.challenge.as_deref(), options.client_data.as_ref())?;
+        let payload = platform_registration_options_to_payload(&self.relying_party_identifier, options);
+        let json = serde_json::to_string(&payload)
+            .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
+        let json_c = CString::new(json)
+            .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
+        let mut err_ptr = ptr::null_mut();
+        let handle = unsafe {
+            ffi::authservices_passkey_registration_request_create_from_json(
+                json_c.as_ptr(),
+                &raw mut err_ptr,
+            )
+        };
+        if handle.is_null() {
+            let message = if err_ptr.is_null() {
+                "passkey_registration_request_create_from_json returned null".to_owned()
+            } else {
+                unsafe { private::take_string(err_ptr) }
+            };
+            return Err(AuthenticationServicesError::FrameworkError(message));
+        }
+        Ok(PasskeyRegistrationRequest {
+            ptr: handle,
+            relying_party_identifier: self.relying_party_identifier.clone(),
+        })
     }
 
     pub fn create_assertion_request(
         &self,
         challenge: &[u8],
     ) -> Result<PasskeyAssertionRequest, AuthenticationServicesError> {
+        validate_challenge(Some(challenge), None)?;
         let rp_c = CString::new(self.relying_party_identifier.as_str())
             .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
         let challenge_c = CString::new(encode_bytes(challenge))
@@ -1224,9 +1316,31 @@ impl PlatformPublicKeyCredentialProvider {
         &self,
         options: &PlatformPasskeyAssertionOptions,
     ) -> Result<PasskeyAssertionRequest, AuthenticationServicesError> {
-        let request = self.create_assertion_request(options.challenge.as_deref().unwrap_or_default())?;
-        request.update(options)?;
-        Ok(request)
+        validate_challenge(options.challenge.as_deref(), options.client_data.as_ref())?;
+        let payload = platform_assertion_options_to_payload(&self.relying_party_identifier, options);
+        let json = serde_json::to_string(&payload)
+            .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
+        let json_c = CString::new(json)
+            .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
+        let mut err_ptr = ptr::null_mut();
+        let handle = unsafe {
+            ffi::authservices_passkey_assertion_request_create_from_json(
+                json_c.as_ptr(),
+                &raw mut err_ptr,
+            )
+        };
+        if handle.is_null() {
+            let message = if err_ptr.is_null() {
+                "passkey_assertion_request_create_from_json returned null".to_owned()
+            } else {
+                unsafe { private::take_string(err_ptr) }
+            };
+            return Err(AuthenticationServicesError::FrameworkError(message));
+        }
+        Ok(PasskeyAssertionRequest {
+            ptr: handle,
+            relying_party_identifier: self.relying_party_identifier.clone(),
+        })
     }
 }
 
@@ -1253,6 +1367,7 @@ impl SecurityKeyPublicKeyCredentialProvider {
         &self,
         options: &SecurityKeyRegistrationOptions,
     ) -> Result<SecurityKeyRegistrationRequest, AuthenticationServicesError> {
+        validate_challenge(options.challenge.as_deref(), options.client_data.as_ref())?;
         let payload = security_registration_options_to_payload(&self.relying_party_identifier, options);
         let json = serde_json::to_string(&payload)
             .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
@@ -1283,6 +1398,7 @@ impl SecurityKeyPublicKeyCredentialProvider {
         &self,
         options: &SecurityKeyAssertionOptions,
     ) -> Result<SecurityKeyAssertionRequest, AuthenticationServicesError> {
+        validate_challenge(options.challenge.as_deref(), options.client_data.as_ref())?;
         let payload = security_assertion_options_to_payload(&self.relying_party_identifier, options);
         let json = serde_json::to_string(&payload)
             .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;

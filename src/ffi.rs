@@ -53,6 +53,10 @@ unsafe extern "C" {
         user_display_name: *const c_char,
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
+    pub fn authservices_passkey_registration_request_create_from_json(
+        payload_json: *const c_char,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_void;
     pub fn authservices_passkey_registration_request_release(ptr: *mut c_void);
     pub fn authservices_passkey_registration_request_kind_json(ptr: *mut c_void) -> *mut c_char;
     pub fn authservices_passkey_registration_request_copy_json(ptr: *mut c_void) -> *mut c_char;
@@ -65,6 +69,10 @@ unsafe extern "C" {
     pub fn authservices_passkey_assertion_request_create(
         relying_party_id: *const c_char,
         challenge_b64: *const c_char,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_void;
+    pub fn authservices_passkey_assertion_request_create_from_json(
+        payload_json: *const c_char,
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
     pub fn authservices_passkey_assertion_request_release(ptr: *mut c_void);
