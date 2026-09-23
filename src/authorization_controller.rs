@@ -359,7 +359,7 @@ impl AuthorizationController {
                 refcon,
                 Some(on_success_trampoline),
                 Some(on_error_trampoline),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         if handle.is_null() {
@@ -376,7 +376,7 @@ impl AuthorizationController {
             ffi::authservices_authorization_controller_perform_requests_with_options(
                 handle,
                 options.bits(),
-                &mut start_err_ptr,
+                &raw mut start_err_ptr,
             )
         };
         if status != ffi::status::OK {

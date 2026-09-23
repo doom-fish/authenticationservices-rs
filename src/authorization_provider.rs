@@ -142,7 +142,7 @@ impl PasswordProvider {
     /// Create a password/keychain credential request.
     pub fn create_request(&self) -> Result<PasswordRequest, AuthenticationServicesError> {
         let mut err_ptr = ptr::null_mut();
-        let handle = unsafe { ffi::authservices_password_provider_create_request(&mut err_ptr) };
+        let handle = unsafe { ffi::authservices_password_provider_create_request(&raw mut err_ptr) };
         if handle.is_null() {
             let message = if err_ptr.is_null() {
                 "password_provider_create_request returned null".to_owned()

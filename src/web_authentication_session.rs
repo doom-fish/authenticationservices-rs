@@ -83,7 +83,7 @@ impl WebAuthenticationCallback {
             ffi::authservices_web_auth_callback_matches_url(
                 payload_c.as_ptr(),
                 url_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         match result {
@@ -185,7 +185,7 @@ pub(crate) fn create_session_handle_with_callback(
             payload_c.as_ptr(),
             refcon,
             Some(on_complete),
-            &mut err_ptr,
+            &raw mut err_ptr,
         )
     };
     if handle.is_null() {
@@ -321,7 +321,7 @@ impl WebAuthenticationSession {
         let refcon = state_ptr.cast_mut().cast::<c_void>();
         let handle = create_session_handle(self, refcon)?;
         let mut err_ptr = ptr::null_mut();
-        let status = unsafe { ffi::authservices_web_auth_session_start(handle, &mut err_ptr) };
+        let status = unsafe { ffi::authservices_web_auth_session_start(handle, &raw mut err_ptr) };
         if status != ffi::status::OK {
             unsafe { ffi::authservices_web_auth_session_release(handle) };
             let message = if err_ptr.is_null() {

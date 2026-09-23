@@ -34,7 +34,7 @@ impl PasswordCredential {
             ffi::authservices_password_credential_create(
                 user_c.as_ptr(),
                 password_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         if handle.is_null() {

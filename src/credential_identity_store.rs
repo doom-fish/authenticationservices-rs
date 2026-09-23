@@ -335,7 +335,7 @@ impl CredentialIdentityStore {
 
     pub fn state(&self) -> Result<CredentialIdentityStoreState, AuthenticationServicesError> {
         let mut err_ptr = ptr::null_mut();
-        let json_ptr = unsafe { ffi::authservices_credential_identity_store_state_json(&mut err_ptr) };
+        let json_ptr = unsafe { ffi::authservices_credential_identity_store_state_json(&raw mut err_ptr) };
         if json_ptr.is_null() {
             let message = if err_ptr.is_null() {
                 "credential_identity_store_state_json returned null".to_owned()
@@ -364,9 +364,9 @@ impl CredentialIdentityStore {
             .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
         let mut err_ptr = ptr::null_mut();
         let status = unsafe {
-            ffi::authservices_credential_identity_store_save_identities_json(json_c.as_ptr(), &mut err_ptr)
+            ffi::authservices_credential_identity_store_save_identities_json(json_c.as_ptr(), &raw mut err_ptr)
         };
-        status_result(status, &mut err_ptr)
+        status_result(status, &raw mut err_ptr)
     }
 
     pub fn remove_identities(
@@ -382,10 +382,10 @@ impl CredentialIdentityStore {
         let status = unsafe {
             ffi::authservices_credential_identity_store_remove_identities_json(
                 json_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
-        status_result(status, &mut err_ptr)
+        status_result(status, &raw mut err_ptr)
     }
 
     pub fn replace_identities(
@@ -401,16 +401,16 @@ impl CredentialIdentityStore {
         let status = unsafe {
             ffi::authservices_credential_identity_store_replace_identities_json(
                 json_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
-        status_result(status, &mut err_ptr)
+        status_result(status, &raw mut err_ptr)
     }
 
     pub fn remove_all_identities(&self) -> Result<(), AuthenticationServicesError> {
         let mut err_ptr = ptr::null_mut();
-        let status = unsafe { ffi::authservices_credential_identity_store_remove_all(&mut err_ptr) };
-        status_result(status, &mut err_ptr)
+        let status = unsafe { ffi::authservices_credential_identity_store_remove_all(&raw mut err_ptr) };
+        status_result(status, &raw mut err_ptr)
     }
 
     pub fn credential_identities_for_service(
@@ -428,7 +428,7 @@ impl CredentialIdentityStore {
             ffi::authservices_credential_identity_store_identities_json(
                 json_c.as_ptr(),
                 identity_types.bits(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         if json_ptr.is_null() {

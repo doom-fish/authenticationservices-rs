@@ -236,7 +236,7 @@ impl AsyncAuthorizationController {
                 refcon,
                 Some(authorization_success_async_cb),
                 Some(authorization_error_async_cb),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         if handle.is_null() {
@@ -260,7 +260,7 @@ impl AsyncAuthorizationController {
             ffi::authservices_authorization_controller_perform_requests_with_options(
                 handle,
                 options.bits(),
-                &mut start_err_ptr,
+                &raw mut start_err_ptr,
             )
         };
         if status != ffi::status::OK {
@@ -322,7 +322,7 @@ impl<'a> AsyncWebAuthenticationSession<'a> {
         };
 
         let mut err_ptr = ptr::null_mut();
-        let status = unsafe { ffi::authservices_web_auth_session_start(handle, &mut err_ptr) };
+        let status = unsafe { ffi::authservices_web_auth_session_start(handle, &raw mut err_ptr) };
         if status != ffi::status::OK {
             unsafe { ffi::authservices_web_auth_session_release(handle) };
             let message = if err_ptr.is_null() {

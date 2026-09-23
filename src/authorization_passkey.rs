@@ -777,7 +777,7 @@ fn platform_assertion_options_to_payload(
             .map(user_verification_to_str)
             .map(str::to_owned),
         large_blob: options.large_blob.as_ref().map(large_blob_assertion_to_payload),
-        prf: (!options.prf.as_ref().map_or(true, |prf| {
+        prf: (!options.prf.as_ref().is_none_or(|prf| {
             prf.input_values.is_none() && prf.per_credential_input_values.is_empty()
         }))
         .then(|| PrfAssertionInputPayload {
@@ -993,7 +993,7 @@ impl PlatformCredentialDescriptor {
             .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
         let mut err_ptr = ptr::null_mut();
         let handle = unsafe {
-            ffi::authservices_platform_credential_descriptor_create_from_json(json_c.as_ptr(), &mut err_ptr)
+            ffi::authservices_platform_credential_descriptor_create_from_json(json_c.as_ptr(), &raw mut err_ptr)
         };
         if handle.is_null() {
             let message = if err_ptr.is_null() {
@@ -1041,7 +1041,7 @@ impl SecurityKeyCredentialDescriptor {
         let handle = unsafe {
             ffi::authservices_security_key_credential_descriptor_create_from_json(
                 json_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         if handle.is_null() {
@@ -1113,7 +1113,7 @@ impl PlatformPublicKeyCredentialProvider {
                 user_id_c.as_ptr(),
                 user_name_c.as_ptr(),
                 display_name_ptr,
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         if handle.is_null() {
@@ -1157,7 +1157,7 @@ impl PlatformPublicKeyCredentialProvider {
             ffi::authservices_passkey_assertion_request_create(
                 rp_c.as_ptr(),
                 challenge_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         if handle.is_null() {
@@ -1216,7 +1216,7 @@ impl SecurityKeyPublicKeyCredentialProvider {
         let handle = unsafe {
             ffi::authservices_security_key_registration_request_create_from_json(
                 json_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         if handle.is_null() {
@@ -1246,7 +1246,7 @@ impl SecurityKeyPublicKeyCredentialProvider {
         let handle = unsafe {
             ffi::authservices_security_key_assertion_request_create_from_json(
                 json_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         if handle.is_null() {
@@ -1322,10 +1322,10 @@ impl PasskeyRegistrationRequest {
             ffi::authservices_passkey_registration_request_update_from_json(
                 self.ptr,
                 json_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
-        status_to_result(status, &mut err_ptr)
+        status_to_result(status, &raw mut err_ptr)
     }
 }
 
@@ -1387,10 +1387,10 @@ impl PasskeyAssertionRequest {
             ffi::authservices_passkey_assertion_request_update_from_json(
                 self.ptr,
                 json_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
-        status_to_result(status, &mut err_ptr)
+        status_to_result(status, &raw mut err_ptr)
     }
 }
 
@@ -1441,10 +1441,10 @@ impl SecurityKeyRegistrationRequest {
             ffi::authservices_security_key_registration_request_update_from_json(
                 self.ptr,
                 json_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
-        status_to_result(status, &mut err_ptr)
+        status_to_result(status, &raw mut err_ptr)
     }
 }
 
@@ -1495,10 +1495,10 @@ impl SecurityKeyAssertionRequest {
             ffi::authservices_security_key_assertion_request_update_from_json(
                 self.ptr,
                 json_c.as_ptr(),
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
-        status_to_result(status, &mut err_ptr)
+        status_to_result(status, &raw mut err_ptr)
     }
 }
 

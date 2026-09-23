@@ -49,7 +49,7 @@ impl AccountAuthenticationModificationController {
         let mut err_ptr = ptr::null_mut();
         let status = unsafe {
             ffi::authservices_account_authentication_modification_controller_perform_stub(
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
         if status == ffi::status::OK {

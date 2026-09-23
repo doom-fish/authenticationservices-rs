@@ -37,18 +37,18 @@ impl SettingsHelper {
     pub fn open_credential_provider_app_settings() -> Result<(), AuthenticationServicesError> {
         let mut err_ptr = ptr::null_mut();
         let status = unsafe {
-            ffi::authservices_settings_helper_open_credential_provider_app_settings(&mut err_ptr)
+            ffi::authservices_settings_helper_open_credential_provider_app_settings(&raw mut err_ptr)
         };
-        status_to_result(status, &mut err_ptr)
+        status_to_result(status, &raw mut err_ptr)
     }
 
     /// Opens the verification-code settings UI.
     pub fn open_verification_code_app_settings() -> Result<(), AuthenticationServicesError> {
         let mut err_ptr = ptr::null_mut();
         let status = unsafe {
-            ffi::authservices_settings_helper_open_verification_code_app_settings(&mut err_ptr)
+            ffi::authservices_settings_helper_open_verification_code_app_settings(&raw mut err_ptr)
         };
-        status_to_result(status, &mut err_ptr)
+        status_to_result(status, &raw mut err_ptr)
     }
 
     /// Requests that the system enable the credential-provider extension.
@@ -57,9 +57,9 @@ impl SettingsHelper {
         let mut err_ptr = ptr::null_mut();
         let status = unsafe {
             ffi::authservices_settings_helper_request_to_turn_on_credential_provider_extension(
-                &mut err_ptr,
+                &raw mut err_ptr,
             )
         };
-        status_to_result(status, &mut err_ptr)
+        status_to_result(status, &raw mut err_ptr)
     }
 }

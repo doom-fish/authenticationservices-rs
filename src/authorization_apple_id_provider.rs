@@ -215,7 +215,7 @@ impl AppleIdRequest {
             .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
         let mut err_ptr = ptr::null_mut();
         let status = unsafe {
-            ffi::authservices_apple_id_request_update_from_json(self.ptr, json_c.as_ptr(), &mut err_ptr)
+            ffi::authservices_apple_id_request_update_from_json(self.ptr, json_c.as_ptr(), &raw mut err_ptr)
         };
         if status == ffi::status::OK {
             Ok(())
@@ -260,7 +260,7 @@ impl AppleIdProvider {
         let scopes_ptr = scopes_c.as_ref().map_or(ptr::null(), |value| value.as_ptr());
         let mut err_ptr = ptr::null_mut();
         let handle = unsafe {
-            ffi::authservices_apple_id_provider_create_request(scopes_ptr, &mut err_ptr)
+            ffi::authservices_apple_id_provider_create_request(scopes_ptr, &raw mut err_ptr)
         };
         if handle.is_null() {
             let message = if err_ptr.is_null() {
@@ -292,7 +292,7 @@ impl AppleIdProvider {
             .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
         let mut err_ptr = ptr::null_mut();
         let json_ptr = unsafe {
-            ffi::authservices_apple_id_provider_credential_state_json(user_c.as_ptr(), &mut err_ptr)
+            ffi::authservices_apple_id_provider_credential_state_json(user_c.as_ptr(), &raw mut err_ptr)
         };
         if json_ptr.is_null() {
             let message = if err_ptr.is_null() {
