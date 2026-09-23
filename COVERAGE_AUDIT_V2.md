@@ -6,7 +6,9 @@ GAPS: 0
 EXEMPT: 17
 COVERAGE_PCT: 100.00%
 
-Audit conducted via comprehensive header enumeration of AuthenticationServices.framework (MacOSX26.2.sdk). All macOS-available symbols extracted; iOS-only symbols (marked `API_UNAVAILABLE(macos)`) were separated into EXEMPT category. 16 iOS-only account modification and password generation APIs are unavailable on macOS (tvOS/watchOS also unavailable). One symbol (ASAuthorizationAppleIDButton) is an NSControl subclass and requires AppKit interop, which the doom-fish family deliberately avoids in favor of objc2 direct bindings. The crate provides comprehensive Rust safe wrappers for all practical macOS authentication use cases.
+> What VERIFIED measures: a symbol counts as verified when the crate has a Rust type, enum case or constant for it. For the provider-extension / Platform SSO, single sign-on, credential-provider and web-browser families those are Rust-side data models that make no framework calls; see `COVERAGE.md` for what is bridged. The audit predates the macOS 27 SDK, whose Platform SSO OpenID and token-exchange additions are not covered.
+
+Audit conducted via comprehensive header enumeration of AuthenticationServices.framework (MacOSX26.2.sdk). All macOS-available symbols extracted; iOS-only symbols (marked `API_UNAVAILABLE(macos)`) were separated into EXEMPT category. 16 iOS-only account modification and password generation APIs are unavailable on macOS (tvOS/watchOS also unavailable). One symbol (ASAuthorizationAppleIDButton) is an NSControl subclass; the crate does not bridge AppKit views, so this exemption is a design choice, not a platform limit.
 
 ## 🟢 VERIFIED
 | Symbol | Kind | Header | Wrapped by |

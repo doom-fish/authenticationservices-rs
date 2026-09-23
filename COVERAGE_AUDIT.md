@@ -6,6 +6,8 @@ GAPS: 0
 EXEMPT: 0
 COVERAGE_PCT: 100.00%
 
+> What VERIFIED measures: a symbol counts as verified when the crate has a Rust type, enum case or constant for it. For the provider-extension / Platform SSO, single sign-on, credential-provider and web-browser families those are Rust-side data models that make no framework calls; see `COVERAGE.md` for what is bridged. The audit predates the macOS 27 SDK, whose Platform SSO OpenID and token-exchange additions are not covered.
+
 > macOS-unavailable symbols were filtered out per the audit instructions. This removes the `ASAccountAuthenticationModification*` family and other iOS-only APIs from the denominator, so the crate's explicit macOS placeholders are noted here but not scored.
 
 ## 🟢 VERIFIED
@@ -74,7 +76,7 @@ COVERAGE_PCT: 100.00%
 | `ASAuthorizationSecurityKeyPublicKeyCredentialProvider` | interface | `ASAuthorizationSecurityKeyPublicKeyCredentialProvider.h` | SecurityKeyPublicKeyCredentialProvider |
 | `ASAuthorizationSecurityKeyPublicKeyCredentialRegistration` | interface | `ASAuthorizationSecurityKeyPublicKeyCredentialRegistration.h` | SecurityKeyPublicKeyCredentialRegistration |
 | `ASAuthorizationSecurityKeyPublicKeyCredentialRegistrationRequest` | interface | `ASAuthorizationSecurityKeyPublicKeyCredentialRegistrationRequest.h` | SecurityKeyRegistrationRequest / SecurityKeyRegistrationOptions |
-| `ASCredentialIdentityStore` | interface | `ASCredentialIdentityStore.h` | CredentialIdentityStore (partial: state/model wrappers; mutation/listing calls return NotSupported on macOS) |
+| `ASCredentialIdentityStore` | interface | `ASCredentialIdentityStore.h` | CredentialIdentityStore (state, save/replace/remove/remove-all, listing on macOS 14.4+) |
 | `ASCredentialIdentityTypes` | enum | `ASCredentialIdentityStore.h` | CredentialIdentityTypes |
 | `ASCredentialIdentityStoreState` | interface | `ASCredentialIdentityStoreState.h` | CredentialIdentityStoreState |
 | `ASCredentialServiceIdentifier` | interface | `ASCredentialServiceIdentifier.h` | CredentialServiceIdentifier |
