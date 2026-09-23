@@ -75,24 +75,49 @@ func authservicesFail(
     return authservicesStatus(for: error)
 }
 
+final class AuthServicesAsyncResult<T> {
+    private let lock = NSLock()
+    private let semaphore = DispatchSemaphore(value: 0)
+    private var result: Result<T, Error>?
+    private var abandoned = false
+
+    func complete(_ newResult: Result<T, Error>) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !abandoned else { return }
+        result = newResult
+        semaphore.signal()
+    }
+
+    func wait(seconds: Int) -> Result<T, Error>? {
+        _ = semaphore.wait(timeout: .now() + .seconds(seconds))
+        lock.lock()
+        defer { lock.unlock() }
+        guard let result else {
+            abandoned = true
+            return nil
+        }
+        return result
+    }
+}
+
 func authservicesBlockOnAsync<T>(
     timeoutSeconds: Int = 30,
     work: @escaping () async throws -> T,
     onSuccess: @escaping (T) -> Void,
     onError: @escaping (Error) -> Void
 ) -> Int32 {
-    let semaphore = DispatchSemaphore(value: 0)
-    var result: Result<T, Error>?
-    Task {
+    let pending = AuthServicesAsyncResult<T>()
+    let task = Task {
         do {
-            result = .success(try await work())
+            pending.complete(.success(try await work()))
         } catch {
-            result = .failure(error)
+            pending.complete(.failure(error))
         }
-        semaphore.signal()
     }
-    guard semaphore.wait(timeout: .now() + .seconds(timeoutSeconds)) == .success else {
-        onError(AuthServicesBridgeError.timedOut("AuthenticationServices operation timed out"))
+    guard let result = pending.wait(seconds: timeoutSeconds) else {
+        task.cancel()
+        onError(AuthServicesBridgeError.timedOut("AuthenticationServices operation timed out and was cancelled"))
         return AUTHSERVICES_TIMED_OUT
     }
     switch result {
@@ -102,10 +127,6 @@ func authservicesBlockOnAsync<T>(
     case .failure(let error):
         onError(error)
         return authservicesStatus(for: error)
-    case .none:
-        let error = AuthServicesBridgeError.unknown("AuthenticationServices operation produced no result")
-        onError(error)
-        return error.statusCode
     }
 }
 
