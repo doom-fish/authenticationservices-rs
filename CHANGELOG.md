@@ -1,5 +1,74 @@
 # Changelog
 
+All notable changes to `authenticationservices-rs` are documented here.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.4.0] - Unreleased
+
+### Security
+
+- `WebAuthenticationSessionGuard` and `AuthorizationGuard` handed Swift a
+  borrowed pointer to state they freed on drop, so `guard.cancel();
+  drop(guard)` let the completion or delegate write into freed memory. Swift
+  now owns a `CallbackContext` reference, and results that arrive after the
+  guard is dropped are discarded.
+- `Debug` for `Authorization`, `AppleIdCredential`, `PasswordCredential` and
+  the passkey and security-key assertion types printed identity tokens,
+  authorization codes, passwords, signatures, user handles, PRF outputs and
+  large-blob data. These fields now print as `<redacted>`.
+- A passkey or security-key request built without a challenge used an empty
+  one, which makes the assertion replayable. A missing or empty challenge is
+  now `InvalidArgument`.
+- Request handles were `Send + Sync` while `update(&self)` mutates the request
+  objects that the authorization controller reads on the main thread.
+  `update` now returns `InvalidArgument` while an authorization controller
+  still holds the request, including perform or cancel work already queued on
+  the main queue.
+
+### Fixed
+
+- `CredentialIdentityStore::save_identities`, `remove_identities`,
+  `replace_identities`, `remove_all_identities` and
+  `credential_identities_for_service` always returned `NotSupported` while
+  `is_supported()` reported `true`. They now call `ASCredentialIdentityStore`;
+  passkey identities need macOS 14 and a user handle, listing macOS 14.4,
+  one-time-code identities macOS 15, and service identifiers and display
+  names macOS 26.2.
+- A synchronous call that timed out after 30 s left its Swift task running,
+  and the late result was written into shared state without a lock. The task
+  is now cancelled and a late result is discarded.
+- `update` on a passkey or security-key request silently ignored a new
+  challenge or client data. Changing either now returns `InvalidArgument`;
+  `None` or the current value is accepted.
+
+### Changed
+
+- **Breaking:** `client_data` in `PlatformPasskeyRegistrationOptions`,
+  `PlatformPasskeyAssertionOptions`, `SecurityKeyRegistrationOptions` and
+  `SecurityKeyAssertionOptions` is `Option<PublicKeyCredentialClientData>`
+  (was `Option<Vec<u8>>`). Requests are created from it instead of rejecting
+  it: platform requests need macOS 13.5, security-key requests macOS 14.4.
+  A challenge that contradicts `client_data.challenge` is rejected.
+- **Breaking:** `AppleIdRequest`, `PasswordRequest`,
+  `PasskeyRegistrationRequest`, `PasskeyAssertionRequest`,
+  `SecurityKeyRegistrationRequest` and `SecurityKeyAssertionRequest` are
+  `Send` but no longer `Sync`.
+- **Breaking:** request constructors return `InvalidArgument` for a missing or
+  empty challenge.
+- Dropping `AuthorizationGuard` or `WebAuthenticationSessionGuard` now cancels
+  the controller or session.
+- `doom-fish-utils` requirement is now `>=0.4.1, <0.5`.
+- `rust-version` is now 1.82.
+
+## [0.3.2] - 2026-06-06
+
+### Fixed
+
+- Guarded the AuthenticationServices delegate trampolines against panics
+  crossing the FFI boundary and removed the vestigial Swift bridge C header.
+
 ## [0.3.1] - 2026-05-20
 
 - Migrated local `take_string` body to call `doom_fish_utils::ffi_string::take_owned_cstring_c`. Centralises the duplicated FFI take-string pattern fleet-wide. No public API change.
