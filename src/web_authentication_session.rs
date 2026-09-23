@@ -4,8 +4,9 @@ use core::ffi::c_void;
 use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::ptr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Mutex, PoisonError};
 
+use doom_fish_utils::callback_context::CallbackContext;
 use doom_fish_utils::panic_safe::catch_user_panic;
 use serde::{Deserialize, Serialize};
 
@@ -129,6 +130,8 @@ struct WebSessionState {
     result: Option<Result<String, AuthenticationServicesError>>,
 }
 
+type WebSessionCell = Mutex<WebSessionState>;
+
 unsafe extern "C" fn on_complete_trampoline(
     refcon: *mut c_void,
     url: *mut core::ffi::c_char,
@@ -138,16 +141,23 @@ unsafe extern "C" fn on_complete_trampoline(
     catch_user_panic(
         "authenticationservices::on_complete_trampoline",
         || {
-            let state = unsafe { &*(refcon as *const Mutex<WebSessionState>) };
+            let url = unsafe { private::take_string(url) };
+            let message = unsafe { private::take_string(error_msg) };
             let result = if code == ffi::status::OK {
-                Ok(unsafe { private::take_string(url) })
+                Ok(url)
             } else {
-                let message = unsafe { private::take_string(error_msg) };
                 Err(AuthenticationServicesError::from_code(code, message))
             };
-            if let Ok(mut state) = state.lock() {
-                state.result = Some(result);
-            }
+            let store = |state: &WebSessionCell| {
+                state.lock().unwrap_or_else(PoisonError::into_inner).result = Some(result);
+            };
+            unsafe {
+                CallbackContext::<WebSessionCell>::with(
+                    refcon,
+                    "authenticationservices::on_complete_trampoline",
+                    store,
+                )
+            };
         },
     );
 }
@@ -164,9 +174,20 @@ fn session_payload_from_builder(builder: &WebAuthenticationSession) -> WebAuthen
     }
 }
 
-pub(crate) fn create_session_handle_with_callback(
+pub(crate) fn session_payload_cstring(
     builder: &WebAuthenticationSession,
+) -> Result<CString, AuthenticationServicesError> {
+    let payload = session_payload_from_builder(builder);
+    let payload_json = serde_json::to_string(&payload)
+        .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
+    CString::new(payload_json)
+        .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))
+}
+
+pub(crate) fn create_session_handle_with_callback(
+    payload_c: &CString,
     refcon: *mut c_void,
+    release: ffi::ContextRelease,
     on_complete: unsafe extern "C" fn(
         refcon: *mut c_void,
         url: *mut core::ffi::c_char,
@@ -174,16 +195,12 @@ pub(crate) fn create_session_handle_with_callback(
         error_msg: *mut core::ffi::c_char,
     ),
 ) -> Result<*mut c_void, AuthenticationServicesError> {
-    let payload = session_payload_from_builder(builder);
-    let payload_json = serde_json::to_string(&payload)
-        .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
-    let payload_c = CString::new(payload_json)
-        .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
     let mut err_ptr = ptr::null_mut();
     let handle = unsafe {
         ffi::authservices_web_auth_session_create_from_json(
             payload_c.as_ptr(),
             refcon,
+            release,
             Some(on_complete),
             &raw mut err_ptr,
         )
@@ -199,11 +216,17 @@ pub(crate) fn create_session_handle_with_callback(
     Ok(handle)
 }
 
-pub(crate) fn create_session_handle(
+fn create_session_handle(
     builder: &WebAuthenticationSession,
-    refcon: *mut c_void,
+    context: &CallbackContext<WebSessionCell>,
 ) -> Result<*mut c_void, AuthenticationServicesError> {
-    create_session_handle_with_callback(builder, refcon, on_complete_trampoline)
+    let payload_c = session_payload_cstring(builder)?;
+    create_session_handle_with_callback(
+        &payload_c,
+        context.retained_ptr(),
+        Some(CallbackContext::<WebSessionCell>::RELEASE),
+        on_complete_trampoline,
+    )
 }
 
 fn inspect_handle(handle: *mut c_void) -> Result<WebAuthenticationSessionInfo, AuthenticationServicesError> {
@@ -222,15 +245,19 @@ fn inspect_handle(handle: *mut c_void) -> Result<WebAuthenticationSessionInfo, A
 /// Guard keeping the underlying `ASWebAuthenticationSession` alive.
 pub struct WebAuthenticationSessionGuard {
     handle: *mut c_void,
-    state: Arc<Mutex<WebSessionState>>,
+    context: CallbackContext<WebSessionCell>,
 }
 
 unsafe impl Send for WebAuthenticationSessionGuard {}
 
 impl Drop for WebAuthenticationSessionGuard {
     fn drop(&mut self) {
+        self.context.deactivate();
         if !self.handle.is_null() {
-            unsafe { ffi::authservices_web_auth_session_release(self.handle) };
+            unsafe {
+                ffi::authservices_web_auth_session_cancel(self.handle);
+                ffi::authservices_web_auth_session_release(self.handle);
+            }
         }
     }
 }
@@ -249,7 +276,12 @@ impl WebAuthenticationSessionGuard {
     /// Take the completion result if one has already been delivered.
     #[must_use]
     pub fn take_result(&self) -> Option<Result<String, AuthenticationServicesError>> {
-        self.state.lock().ok()?.result.take()
+        self.context
+            .get()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .result
+            .take()
     }
 }
 
@@ -305,10 +337,8 @@ impl WebAuthenticationSession {
 
     /// Builds the underlying Cocoa object and returns its observable properties without starting it.
     pub fn inspect(&self) -> Result<WebAuthenticationSessionInfo, AuthenticationServicesError> {
-        let state = Arc::new(Mutex::new(WebSessionState { result: None }));
-        let state_ptr: *const Mutex<WebSessionState> = Arc::as_ptr(&state);
-        let refcon = state_ptr.cast_mut().cast::<c_void>();
-        let handle = create_session_handle(self, refcon)?;
+        let context = CallbackContext::new(Mutex::new(WebSessionState { result: None }));
+        let handle = create_session_handle(self, &context)?;
         let info = inspect_handle(handle);
         unsafe { ffi::authservices_web_auth_session_release(handle) };
         info
@@ -316,10 +346,8 @@ impl WebAuthenticationSession {
 
     /// Start the authentication session.
     pub fn start(&self) -> Result<WebAuthenticationSessionGuard, AuthenticationServicesError> {
-        let state = Arc::new(Mutex::new(WebSessionState { result: None }));
-        let state_ptr: *const Mutex<WebSessionState> = Arc::as_ptr(&state);
-        let refcon = state_ptr.cast_mut().cast::<c_void>();
-        let handle = create_session_handle(self, refcon)?;
+        let context = CallbackContext::new(Mutex::new(WebSessionState { result: None }));
+        let handle = create_session_handle(self, &context)?;
         let mut err_ptr = ptr::null_mut();
         let status = unsafe { ffi::authservices_web_auth_session_start(handle, &raw mut err_ptr) };
         if status != ffi::status::OK {
@@ -331,6 +359,78 @@ impl WebAuthenticationSession {
             };
             return Err(AuthenticationServicesError::from_code(status, message));
         }
-        Ok(WebAuthenticationSessionGuard { handle, state })
+        Ok(WebAuthenticationSessionGuard { handle, context })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::ffi::c_char;
+    use std::ffi::CString;
+    use std::ptr;
+    use std::sync::Mutex;
+
+    use doom_fish_utils::callback_context::CallbackContext;
+
+    use super::{on_complete_trampoline, WebSessionCell, WebSessionState};
+    use crate::error::AuthenticationServicesError;
+    use crate::ffi;
+
+    unsafe extern "C" {
+        fn strdup(value: *const c_char) -> *mut c_char;
+    }
+
+    fn swift_string(value: &str) -> *mut c_char {
+        let value = CString::new(value).expect("string");
+        unsafe { strdup(value.as_ptr()) }
+    }
+
+    #[test]
+    fn completions_after_the_guard_is_dropped_are_ignored() {
+        let context = CallbackContext::new(Mutex::new(WebSessionState { result: None }));
+        let swift_reference = context.retained_ptr();
+
+        unsafe {
+            on_complete_trampoline(
+                swift_reference,
+                swift_string("demo://callback?code=1"),
+                ffi::status::OK,
+                ptr::null_mut(),
+            );
+        }
+        let delivered = context.get().lock().expect("state").result.take();
+        assert_eq!(delivered, Some(Ok("demo://callback?code=1".to_owned())));
+
+        drop(context);
+
+        unsafe {
+            on_complete_trampoline(
+                swift_reference,
+                ptr::null_mut(),
+                ffi::status::CANCELLED,
+                swift_string("cancelled after drop"),
+            );
+            (CallbackContext::<WebSessionCell>::RELEASE)(swift_reference);
+        }
+    }
+
+    #[test]
+    fn errors_keep_their_status() {
+        let context = CallbackContext::new(Mutex::new(WebSessionState { result: None }));
+        unsafe {
+            on_complete_trampoline(
+                context.as_ptr(),
+                ptr::null_mut(),
+                ffi::status::CANCELLED,
+                swift_string("user cancelled"),
+            );
+        }
+        let delivered = context.get().lock().expect("state").result.take();
+        assert_eq!(
+            delivered,
+            Some(Err(AuthenticationServicesError::Cancelled(
+                "user cancelled".to_owned()
+            )))
+        );
     }
 }

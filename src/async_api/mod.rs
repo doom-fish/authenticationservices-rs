@@ -32,7 +32,7 @@ use crate::error::AuthenticationServicesError;
 use crate::ffi;
 use crate::private;
 use crate::web_authentication_session::{
-    create_session_handle_with_callback, WebAuthenticationSession,
+    create_session_handle_with_callback, session_payload_cstring, WebAuthenticationSession,
 };
 
 fn flatten_async_result<T>(
@@ -234,6 +234,7 @@ impl AsyncAuthorizationController {
                     .security_key_assertion
                     .map_or(ptr::null_mut(), |request| request.ptr),
                 refcon,
+                None,
                 Some(authorization_success_async_cb),
                 Some(authorization_error_async_cb),
                 &raw mut err_ptr,
@@ -301,11 +302,13 @@ impl<'a> AsyncWebAuthenticationSession<'a> {
 
     /// Start the session and await its completion URL.
     pub fn start(&self) -> Result<WebAuthenticationSessionFuture, AuthenticationServicesError> {
+        let payload = session_payload_cstring(self.session)?;
         let (inner, refcon) =
             AsyncCompletion::<Result<String, AuthenticationServicesError>>::create();
         let handle = match create_session_handle_with_callback(
-            self.session,
+            &payload,
             refcon,
+            None,
             web_auth_complete_async_cb,
         ) {
             Ok(handle) => handle,

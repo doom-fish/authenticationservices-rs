@@ -75,6 +75,22 @@ func authservicesFail(
     return authservicesStatus(for: error)
 }
 
+public typealias AuthServicesContextRelease = @convention(c) (UnsafeMutableRawPointer?) -> Void
+
+final class AuthServicesCallbackContext {
+    let pointer: UnsafeMutableRawPointer?
+    private let release: AuthServicesContextRelease?
+
+    init(_ pointer: UnsafeMutableRawPointer?, release: AuthServicesContextRelease?) {
+        self.pointer = pointer
+        self.release = release
+    }
+
+    deinit {
+        release?(pointer)
+    }
+}
+
 final class AuthServicesAsyncResult<T> {
     private let lock = NSLock()
     private let semaphore = DispatchSemaphore(value: 0)

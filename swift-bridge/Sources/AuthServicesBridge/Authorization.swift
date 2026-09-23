@@ -9,12 +9,12 @@ final class AuthControllerDelegate: NSObject,
     typealias SuccessFn = @convention(c) (UnsafeMutableRawPointer?, UnsafeMutablePointer<CChar>?) -> Void
     typealias ErrorFn = @convention(c) (UnsafeMutableRawPointer?, Int32, UnsafeMutablePointer<CChar>?) -> Void
 
-    let refcon: UnsafeMutableRawPointer?
+    let context: AuthServicesCallbackContext
     let onSuccess: SuccessFn
     let onError: ErrorFn
 
-    init(refcon: UnsafeMutableRawPointer?, onSuccess: @escaping SuccessFn, onError: @escaping ErrorFn) {
-        self.refcon = refcon
+    init(context: AuthServicesCallbackContext, onSuccess: @escaping SuccessFn, onError: @escaping ErrorFn) {
+        self.context = context
         self.onSuccess = onSuccess
         self.onError = onError
     }
@@ -30,14 +30,14 @@ final class AuthControllerDelegate: NSObject,
         controller: ASAuthorizationController,
         didCompleteWithAuthorization authorization: ASAuthorization
     ) {
-        onSuccess(refcon, authservicesCopyJSON(buildAuthorizationPayload(from: authorization)))
+        onSuccess(context.pointer, authservicesCopyJSON(buildAuthorizationPayload(from: authorization)))
     }
 
     func authorizationController(
         controller: ASAuthorizationController,
         didCompleteWithError error: Error
     ) {
-        onError(refcon, authservicesStatus(for: error), authservicesCString(error.localizedDescription))
+        onError(context.pointer, authservicesStatus(for: error), authservicesCString(error.localizedDescription))
     }
 }
 
@@ -358,7 +358,7 @@ private func authservicesCreateController(
     passkeyAssertionRequest: UnsafeMutableRawPointer?,
     securityKeyRegistrationRequest: UnsafeMutableRawPointer?,
     securityKeyAssertionRequest: UnsafeMutableRawPointer?,
-    refcon: UnsafeMutableRawPointer?,
+    context: AuthServicesCallbackContext,
     onSuccess: @escaping @convention(c) (UnsafeMutableRawPointer?, UnsafeMutablePointer<CChar>?) -> Void,
     onError: @escaping @convention(c) (UnsafeMutableRawPointer?, Int32, UnsafeMutablePointer<CChar>?) -> Void,
     outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
@@ -389,7 +389,7 @@ private func authservicesCreateController(
         )
         return nil
     }
-    let delegate = AuthControllerDelegate(refcon: refcon, onSuccess: onSuccess, onError: onError)
+    let delegate = AuthControllerDelegate(context: context, onSuccess: onSuccess, onError: onError)
     let controller = ASAuthorizationController(authorizationRequests: requests)
     controller.delegate = delegate
     controller.presentationContextProvider = delegate
@@ -407,6 +407,7 @@ public func authservices_authorization_controller_create(
     _ onError: (@convention(c) (UnsafeMutableRawPointer?, Int32, UnsafeMutablePointer<CChar>?) -> Void)?,
     _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutableRawPointer? {
+    let context = AuthServicesCallbackContext(refcon, release: nil)
     guard let onSuccess, let onError else {
         authservicesPopulateError(
             outError,
@@ -421,7 +422,7 @@ public func authservices_authorization_controller_create(
         passkeyAssertionRequest: passkeyAssertionRequest,
         securityKeyRegistrationRequest: nil,
         securityKeyAssertionRequest: nil,
-        refcon: refcon,
+        context: context,
         onSuccess: onSuccess,
         onError: onError,
         outError: outError
@@ -437,10 +438,12 @@ public func authservices_authorization_controller_create_v2(
     _ securityKeyRegistrationRequest: UnsafeMutableRawPointer?,
     _ securityKeyAssertionRequest: UnsafeMutableRawPointer?,
     _ refcon: UnsafeMutableRawPointer?,
+    _ release: AuthServicesContextRelease?,
     _ onSuccess: (@convention(c) (UnsafeMutableRawPointer?, UnsafeMutablePointer<CChar>?) -> Void)?,
     _ onError: (@convention(c) (UnsafeMutableRawPointer?, Int32, UnsafeMutablePointer<CChar>?) -> Void)?,
     _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutableRawPointer? {
+    let context = AuthServicesCallbackContext(refcon, release: release)
     guard let onSuccess, let onError else {
         authservicesPopulateError(
             outError,
@@ -455,7 +458,7 @@ public func authservices_authorization_controller_create_v2(
         passkeyAssertionRequest: passkeyAssertionRequest,
         securityKeyRegistrationRequest: securityKeyRegistrationRequest,
         securityKeyAssertionRequest: securityKeyAssertionRequest,
-        refcon: refcon,
+        context: context,
         onSuccess: onSuccess,
         onError: onError,
         outError: outError

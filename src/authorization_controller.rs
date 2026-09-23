@@ -3,10 +3,11 @@
 use core::ffi::c_void;
 use std::ops::{BitOr, BitOrAssign};
 use std::ptr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Mutex, PoisonError};
 
 use serde::Deserialize;
 
+use doom_fish_utils::callback_context::CallbackContext;
 use doom_fish_utils::panic_safe::catch_user_panic;
 
 use crate::authorization_apple_id_provider::AppleIdRequest;
@@ -184,6 +185,21 @@ struct CallbackState {
     result: Option<Result<Authorization, AuthenticationServicesError>>,
 }
 
+type AuthorizationCell = Mutex<CallbackState>;
+
+fn store_result(refcon: *mut c_void, result: Result<Authorization, AuthenticationServicesError>) {
+    let store = |state: &AuthorizationCell| {
+        state.lock().unwrap_or_else(PoisonError::into_inner).result = Some(result);
+    };
+    unsafe {
+        CallbackContext::<AuthorizationCell>::with(
+            refcon,
+            "authenticationservices::authorization_result",
+            store,
+        )
+    };
+}
+
 /// `ASAuthorizationController.RequestOptions` bitset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct AuthorizationControllerRequestOptions(u64);
@@ -235,15 +251,19 @@ pub struct AuthorizationControllerRequests<'a> {
 /// Guard that keeps the `ASAuthorizationController` alive and receives delegate callbacks.
 pub struct AuthorizationGuard {
     handle: *mut c_void,
-    state: Arc<Mutex<CallbackState>>,
+    context: CallbackContext<AuthorizationCell>,
 }
 
 unsafe impl Send for AuthorizationGuard {}
 
 impl Drop for AuthorizationGuard {
     fn drop(&mut self) {
+        self.context.deactivate();
         if !self.handle.is_null() {
-            unsafe { ffi::authservices_authorization_controller_release(self.handle) };
+            unsafe {
+                ffi::authservices_authorization_controller_cancel(self.handle);
+                ffi::authservices_authorization_controller_release(self.handle);
+            }
         }
     }
 }
@@ -264,7 +284,12 @@ impl AuthorizationGuard {
     /// Take the result if the asynchronous callback has already delivered one.
     #[must_use]
     pub fn take_result(&self) -> Option<Result<Authorization, AuthenticationServicesError>> {
-        self.state.lock().ok()?.result.take()
+        self.context
+            .get()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .result
+            .take()
     }
 }
 
@@ -272,13 +297,10 @@ unsafe extern "C" fn on_success_trampoline(refcon: *mut c_void, json: *mut core:
     catch_user_panic(
         "authenticationservices::on_success_trampoline",
         || {
-            let state = unsafe { &*(refcon as *const Mutex<CallbackState>) };
             let json = unsafe { private::take_string(json) };
             let result = serde_json::from_str(&json)
                 .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()));
-            if let Ok(mut state) = state.lock() {
-                state.result = Some(result);
-            }
+            store_result(refcon, result);
         },
     );
 }
@@ -291,12 +313,8 @@ unsafe extern "C" fn on_error_trampoline(
     catch_user_panic(
         "authenticationservices::on_error_trampoline",
         || {
-            let state = unsafe { &*(refcon as *const Mutex<CallbackState>) };
             let message = unsafe { private::take_string(msg) };
-            let error = AuthenticationServicesError::from_code(code, message);
-            if let Ok(mut state) = state.lock() {
-                state.result = Some(Err(error));
-            }
+            store_result(refcon, Err(AuthenticationServicesError::from_code(code, message)));
         },
     );
 }
@@ -336,9 +354,7 @@ impl AuthorizationController {
         requests: AuthorizationControllerRequests<'_>,
         options: AuthorizationControllerRequestOptions,
     ) -> Result<AuthorizationGuard, AuthenticationServicesError> {
-        let state = Arc::new(Mutex::new(CallbackState { result: None }));
-        let state_ptr: *const Mutex<CallbackState> = Arc::as_ptr(&state);
-        let refcon = state_ptr.cast_mut().cast::<c_void>();
+        let context = CallbackContext::new(Mutex::new(CallbackState { result: None }));
         let mut err_ptr = ptr::null_mut();
         let handle = unsafe {
             ffi::authservices_authorization_controller_create_v2(
@@ -356,7 +372,8 @@ impl AuthorizationController {
                 requests
                     .security_key_assertion
                     .map_or(ptr::null_mut(), |request| request.ptr),
-                refcon,
+                context.retained_ptr(),
+                Some(CallbackContext::<AuthorizationCell>::RELEASE),
                 Some(on_success_trampoline),
                 Some(on_error_trampoline),
                 &raw mut err_ptr,
@@ -370,7 +387,7 @@ impl AuthorizationController {
             };
             return Err(AuthenticationServicesError::FrameworkError(message));
         }
-        let guard = AuthorizationGuard { handle, state };
+        let guard = AuthorizationGuard { handle, context };
         let mut start_err_ptr = ptr::null_mut();
         let status = unsafe {
             ffi::authservices_authorization_controller_perform_requests_with_options(
@@ -388,5 +405,73 @@ impl AuthorizationController {
             return Err(AuthenticationServicesError::from_code(status, message));
         }
         Ok(guard)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::ffi::c_char;
+    use std::ffi::CString;
+    use std::sync::Mutex;
+
+    use doom_fish_utils::callback_context::CallbackContext;
+
+    use super::{on_error_trampoline, on_success_trampoline, AuthorizationCell, CallbackState};
+    use crate::error::AuthenticationServicesError;
+    use crate::ffi;
+
+    unsafe extern "C" {
+        fn strdup(value: *const c_char) -> *mut c_char;
+    }
+
+    fn swift_string(value: &str) -> *mut c_char {
+        let value = CString::new(value).expect("string");
+        unsafe { strdup(value.as_ptr()) }
+    }
+
+    #[test]
+    fn delegate_results_after_the_guard_is_dropped_are_ignored() {
+        let context = CallbackContext::new(Mutex::new(CallbackState { result: None }));
+        let swift_reference = context.retained_ptr();
+
+        unsafe {
+            on_success_trampoline(
+                swift_reference,
+                swift_string(r#"{"provider":"password","userIdentifier":"alice","password":"pw"}"#),
+            );
+        }
+        let delivered = context.get().lock().expect("state").result.take();
+        let authorization = delivered.expect("result").expect("authorization");
+        assert_eq!(authorization.provider, "password");
+        assert_eq!(authorization.user_identifier.as_deref(), Some("alice"));
+
+        drop(context);
+
+        unsafe {
+            on_error_trampoline(
+                swift_reference,
+                ffi::status::CANCELLED,
+                swift_string("cancelled after drop"),
+            );
+            on_success_trampoline(swift_reference, swift_string("{}"));
+            (CallbackContext::<AuthorizationCell>::RELEASE)(swift_reference);
+        }
+    }
+
+    #[test]
+    fn delegate_errors_keep_their_status() {
+        let context = CallbackContext::new(Mutex::new(CallbackState { result: None }));
+        unsafe {
+            on_error_trampoline(
+                context.as_ptr(),
+                ffi::status::CANCELLED,
+                swift_string("user cancelled"),
+            );
+        }
+        let delivered = context.get().lock().expect("state").result.take();
+        assert!(
+            matches!(delivered, Some(Err(AuthenticationServicesError::Cancelled(ref message))) if message == "user cancelled"),
+            "{delivered:?}"
+        );
     }
 }

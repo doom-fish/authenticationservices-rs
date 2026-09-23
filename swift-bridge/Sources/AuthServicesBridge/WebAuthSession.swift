@@ -89,7 +89,7 @@ private func authservicesMakeWebAuthenticationCallback(
 
 private func authservicesCreateWebAuthenticationSession(
     from payload: AuthServicesWebAuthenticationSessionPayload,
-    refcon: UnsafeMutableRawPointer?,
+    context: AuthServicesCallbackContext,
     onComplete: @escaping @convention(c) (
         UnsafeMutableRawPointer?,
         UnsafeMutablePointer<CChar>?,
@@ -113,18 +113,18 @@ private func authservicesCreateWebAuthenticationSession(
             callback: try authservicesMakeWebAuthenticationCallback(from: callback)
         ) { callbackURL, error in
             if let error {
-                onComplete(refcon, nil, authservicesStatus(for: error), authservicesCString(error.localizedDescription))
+                onComplete(context.pointer, nil, authservicesStatus(for: error), authservicesCString(error.localizedDescription))
             } else {
-                onComplete(refcon, authservicesCString(callbackURL?.absoluteString ?? ""), AUTHSERVICES_OK, nil)
+                onComplete(context.pointer, authservicesCString(callbackURL?.absoluteString ?? ""), AUTHSERVICES_OK, nil)
             }
         }
     } else {
         let scheme = callback?.scheme
         session = ASWebAuthenticationSession(url: url, callbackURLScheme: scheme) { callbackURL, error in
             if let error {
-                onComplete(refcon, nil, authservicesStatus(for: error), authservicesCString(error.localizedDescription))
+                onComplete(context.pointer, nil, authservicesStatus(for: error), authservicesCString(error.localizedDescription))
             } else {
-                onComplete(refcon, authservicesCString(callbackURL?.absoluteString ?? ""), AUTHSERVICES_OK, nil)
+                onComplete(context.pointer, authservicesCString(callbackURL?.absoluteString ?? ""), AUTHSERVICES_OK, nil)
             }
         }
     }
@@ -160,6 +160,7 @@ public func authservices_web_auth_session_create(
     ) -> Void)?,
     _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutableRawPointer? {
+    let context = AuthServicesCallbackContext(refcon, release: nil)
     guard let urlString, let onComplete else {
         authservicesPopulateError(
             outError,
@@ -188,7 +189,7 @@ public func authservices_web_auth_session_create(
         return authservices_retain(
             try authservicesCreateWebAuthenticationSession(
                 from: payload,
-                refcon: refcon,
+                context: context,
                 onComplete: onComplete
             )
         )
@@ -202,6 +203,7 @@ public func authservices_web_auth_session_create(
 public func authservices_web_auth_session_create_from_json(
     _ payloadJson: UnsafePointer<CChar>?,
     _ refcon: UnsafeMutableRawPointer?,
+    _ release: AuthServicesContextRelease?,
     _ onComplete: (@convention(c) (
         UnsafeMutableRawPointer?,
         UnsafeMutablePointer<CChar>?,
@@ -210,6 +212,7 @@ public func authservices_web_auth_session_create_from_json(
     ) -> Void)?,
     _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutableRawPointer? {
+    let context = AuthServicesCallbackContext(refcon, release: release)
     guard let onComplete else {
         authservicesPopulateError(
             outError,
@@ -225,7 +228,7 @@ public func authservices_web_auth_session_create_from_json(
         return authservices_retain(
             try authservicesCreateWebAuthenticationSession(
                 from: payload,
-                refcon: refcon,
+                context: context,
                 onComplete: onComplete
             )
         )

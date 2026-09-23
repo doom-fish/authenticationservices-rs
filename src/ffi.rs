@@ -132,6 +132,7 @@ unsafe extern "C" {
         security_key_reg_request: *mut c_void,
         security_key_assert_request: *mut c_void,
         refcon: *mut c_void,
+        release: ContextRelease,
         on_success: Option<unsafe extern "C" fn(refcon: *mut c_void, json: *mut c_char)>,
         on_error: Option<unsafe extern "C" fn(refcon: *mut c_void, code: i32, msg: *mut c_char)>,
         out_error: *mut *mut c_char,
@@ -163,6 +164,7 @@ unsafe extern "C" {
     pub fn authservices_web_auth_session_create_from_json(
         payload_json: *const c_char,
         refcon: *mut c_void,
+        release: ContextRelease,
         on_complete: Option<
             unsafe extern "C" fn(
                 refcon: *mut c_void,
@@ -231,6 +233,8 @@ unsafe extern "C" {
 }
 
 #[allow(dead_code)]
+pub type ContextRelease = Option<unsafe extern "C" fn(*mut c_void)>;
+
 pub mod status {
     pub const OK: i32 = 0;
     pub const INVALID_ARGUMENT: i32 = -1;
