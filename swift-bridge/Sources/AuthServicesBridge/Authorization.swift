@@ -44,10 +44,17 @@ final class AuthControllerDelegate: NSObject,
 final class AuthControllerHandle {
     let controller: ASAuthorizationController
     let delegate: AuthControllerDelegate
+    private let requestUses: [AuthServicesRequestUse]
 
-    init(controller: ASAuthorizationController, delegate: AuthControllerDelegate) {
+    init(controller: ASAuthorizationController, delegate: AuthControllerDelegate, requestUses: [AuthServicesRequestUse]) {
         self.controller = controller
         self.delegate = delegate
+        self.requestUses = requestUses
+        requestUses.forEach { $0.acquire() }
+    }
+
+    deinit {
+        requestUses.forEach { $0.relinquish() }
     }
 }
 
@@ -364,23 +371,34 @@ private func authservicesCreateController(
     outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutableRawPointer? {
     var requests: [ASAuthorizationRequest] = []
+    var requestUses: [AuthServicesRequestUse] = []
     if let appleIDRequest {
-        requests.append(authservices_borrow(appleIDRequest, as: ASAppleIDRequestHandle.self).request)
+        let handle = authservices_borrow(appleIDRequest, as: ASAppleIDRequestHandle.self)
+        requests.append(handle.request)
+        requestUses.append(handle.controllerUse)
     }
     if let passwordRequest {
         requests.append(authservices_borrow(passwordRequest, as: ASPasswordRequestHandle.self).request)
     }
     if let passkeyRegistrationRequest {
-        requests.append(authservices_borrow(passkeyRegistrationRequest, as: ASPasskeyRegistrationRequestHandle.self).request)
+        let handle = authservices_borrow(passkeyRegistrationRequest, as: ASPasskeyRegistrationRequestHandle.self)
+        requests.append(handle.request)
+        requestUses.append(handle.controllerUse)
     }
     if let passkeyAssertionRequest {
-        requests.append(authservices_borrow(passkeyAssertionRequest, as: ASPasskeyAssertionRequestHandle.self).request)
+        let handle = authservices_borrow(passkeyAssertionRequest, as: ASPasskeyAssertionRequestHandle.self)
+        requests.append(handle.request)
+        requestUses.append(handle.controllerUse)
     }
     if let securityKeyRegistrationRequest {
-        requests.append(authservices_borrow(securityKeyRegistrationRequest, as: ASSecurityKeyRegistrationRequestHandle.self).request)
+        let handle = authservices_borrow(securityKeyRegistrationRequest, as: ASSecurityKeyRegistrationRequestHandle.self)
+        requests.append(handle.request)
+        requestUses.append(handle.controllerUse)
     }
     if let securityKeyAssertionRequest {
-        requests.append(authservices_borrow(securityKeyAssertionRequest, as: ASSecurityKeyAssertionRequestHandle.self).request)
+        let handle = authservices_borrow(securityKeyAssertionRequest, as: ASSecurityKeyAssertionRequestHandle.self)
+        requests.append(handle.request)
+        requestUses.append(handle.controllerUse)
     }
     guard !requests.isEmpty else {
         authservicesPopulateError(
@@ -393,7 +411,7 @@ private func authservicesCreateController(
     let controller = ASAuthorizationController(authorizationRequests: requests)
     controller.delegate = delegate
     controller.presentationContextProvider = delegate
-    return authservices_retain(AuthControllerHandle(controller: controller, delegate: delegate))
+    return authservices_retain(AuthControllerHandle(controller: controller, delegate: delegate, requestUses: requestUses))
 }
 
 @_cdecl("authservices_authorization_controller_create")

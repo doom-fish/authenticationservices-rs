@@ -130,3 +130,61 @@ fn a_challenge_that_contradicts_the_client_data_is_rejected() {
         },
     ));
 }
+
+#[test]
+fn update_rejects_changes_to_the_challenge_and_client_data() {
+    let platform = PlatformPublicKeyCredentialProvider::new("example.com");
+    let assertion = platform.create_assertion_request(&[3; 32]).unwrap();
+    assert_invalid_argument(assertion.update(&PlatformPasskeyAssertionOptions {
+        challenge: Some(vec![4; 32]),
+        ..PlatformPasskeyAssertionOptions::default()
+    }));
+    assert_invalid_argument(assertion.update(&PlatformPasskeyAssertionOptions {
+        client_data: Some(PublicKeyCredentialClientData::new(vec![3; 32], "https://example.com")),
+        ..PlatformPasskeyAssertionOptions::default()
+    }));
+    assertion
+        .update(&PlatformPasskeyAssertionOptions {
+            challenge: Some(vec![3; 32]),
+            ..PlatformPasskeyAssertionOptions::default()
+        })
+        .unwrap();
+    assertion.update(&PlatformPasskeyAssertionOptions::default()).unwrap();
+    assert_eq!(assertion.configuration().unwrap().challenge, Some(vec![3; 32]));
+
+    let registration = platform
+        .create_registration_request(&[5; 32], b"user-1", "alice", None)
+        .unwrap();
+    assert_invalid_argument(registration.update(&PlatformPasskeyRegistrationOptions {
+        challenge: Some(vec![6; 32]),
+        ..registration_options()
+    }));
+    registration.update(&registration.configuration().unwrap()).unwrap();
+
+    let security_key = SecurityKeyPublicKeyCredentialProvider::new("example.com");
+    let security_assertion = security_key
+        .create_assertion_request_with_options(&SecurityKeyAssertionOptions {
+            challenge: Some(vec![7; 32]),
+            ..SecurityKeyAssertionOptions::default()
+        })
+        .unwrap();
+    assert_invalid_argument(security_assertion.update(&SecurityKeyAssertionOptions {
+        challenge: Some(vec![8; 32]),
+        ..SecurityKeyAssertionOptions::default()
+    }));
+    security_assertion.update(&security_assertion.configuration().unwrap()).unwrap();
+
+    let security_registration = security_key
+        .create_registration_request_with_options(&SecurityKeyRegistrationOptions {
+            challenge: Some(vec![9; 32]),
+            ..security_key_registration_options()
+        })
+        .unwrap();
+    assert_invalid_argument(security_registration.update(&SecurityKeyRegistrationOptions {
+        challenge: Some(vec![10; 32]),
+        ..security_key_registration_options()
+    }));
+    security_registration
+        .update(&security_registration.configuration().unwrap())
+        .unwrap();
+}

@@ -3,6 +3,7 @@ import AuthenticationServices
 
 final class ASAppleIDRequestHandle {
     let request: ASAuthorizationAppleIDRequest
+    let controllerUse = AuthServicesRequestUse()
 
     init(_ request: ASAuthorizationAppleIDRequest) {
         self.request = request
@@ -188,7 +189,9 @@ public func authservices_apple_id_request_update_from_json(
     do {
         let payload = try authservicesDecodeJSON(payloadJson, as: AuthServicesAppleIDRequestPayload.self)
         let handle = authservices_borrow(ptr, as: ASAppleIDRequestHandle.self)
-        authservicesApplyAppleIDRequestPayload(payload, to: handle.request)
+        try handle.controllerUse.mutate {
+            authservicesApplyAppleIDRequestPayload(payload, to: handle.request)
+        }
         return AUTHSERVICES_OK
     } catch {
         return authservicesFail(outError, with: error)

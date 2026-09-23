@@ -463,6 +463,12 @@ mod tests {
     use doom_fish_utils::callback_context::CallbackContext;
 
     use super::{on_error_trampoline, on_success_trampoline, AuthorizationCell, CallbackState};
+    use crate::authorization_apple_id_provider::{AppleIdProvider, AppleIdRequestConfiguration, AppleIdScope};
+    use crate::authorization_passkey::{
+        PlatformPasskeyAssertionOptions, PlatformPublicKeyCredentialProvider,
+        PublicKeyCredentialUserVerificationPreference, SecurityKeyAssertionOptions,
+        SecurityKeyPublicKeyCredentialProvider,
+    };
     use crate::error::AuthenticationServicesError;
     use crate::ffi;
 
@@ -518,6 +524,84 @@ mod tests {
         assert!(
             matches!(delivered, Some(Err(AuthenticationServicesError::Cancelled(ref message))) if message == "user cancelled"),
             "{delivered:?}"
+        );
+    }
+
+    fn is_in_use_error<T: core::fmt::Debug>(result: &Result<T, AuthenticationServicesError>) -> bool {
+        matches!(
+            result,
+            Err(AuthenticationServicesError::InvalidArgument(message))
+                if message.contains("in use by an authorization controller")
+        )
+    }
+
+    #[test]
+    fn requests_reject_updates_while_a_controller_holds_them() {
+        let apple_id = AppleIdProvider::new().create_request(None).expect("Apple ID request");
+        let passkey = PlatformPublicKeyCredentialProvider::new("example.com")
+            .create_assertion_request(&[7; 32])
+            .expect("passkey request");
+        let security_key = SecurityKeyPublicKeyCredentialProvider::new("example.com")
+            .create_assertion_request_with_options(&SecurityKeyAssertionOptions {
+                challenge: Some(vec![9; 32]),
+                ..SecurityKeyAssertionOptions::default()
+            })
+            .expect("security-key request");
+        let context = CallbackContext::new(Mutex::new(CallbackState { result: None }));
+        let mut err_ptr = core::ptr::null_mut();
+        let controller = unsafe {
+            ffi::authservices_authorization_controller_create_v2(
+                apple_id.ptr,
+                core::ptr::null_mut(),
+                core::ptr::null_mut(),
+                passkey.ptr,
+                core::ptr::null_mut(),
+                security_key.ptr,
+                context.retained_ptr(),
+                Some(CallbackContext::<AuthorizationCell>::RELEASE),
+                Some(on_success_trampoline),
+                Some(on_error_trampoline),
+                &raw mut err_ptr,
+            )
+        };
+        assert!(!controller.is_null());
+
+        let apple_id_configuration = AppleIdRequestConfiguration {
+            requested_scopes: vec![AppleIdScope::Email],
+            ..AppleIdRequestConfiguration::default()
+        };
+        let passkey_options = PlatformPasskeyAssertionOptions {
+            user_verification_preference: Some(PublicKeyCredentialUserVerificationPreference::Required),
+            ..PlatformPasskeyAssertionOptions::default()
+        };
+        let security_key_options = SecurityKeyAssertionOptions {
+            user_verification_preference: Some(PublicKeyCredentialUserVerificationPreference::Discouraged),
+            ..SecurityKeyAssertionOptions::default()
+        };
+        assert!(is_in_use_error(&apple_id.update(&apple_id_configuration)));
+        assert!(is_in_use_error(&passkey.update(&passkey_options)));
+        assert!(is_in_use_error(&security_key.update(&security_key_options)));
+        assert_eq!(
+            passkey.configuration().expect("configuration").user_verification_preference,
+            Some(PublicKeyCredentialUserVerificationPreference::Preferred)
+        );
+
+        unsafe { ffi::authservices_authorization_controller_release(controller) };
+
+        apple_id.update(&apple_id_configuration).expect("Apple ID update");
+        passkey.update(&passkey_options).expect("passkey update");
+        security_key.update(&security_key_options).expect("security-key update");
+        assert_eq!(
+            apple_id.configuration().expect("configuration").requested_scopes,
+            vec![AppleIdScope::Email]
+        );
+        assert_eq!(
+            passkey.configuration().expect("configuration").user_verification_preference,
+            Some(PublicKeyCredentialUserVerificationPreference::Required)
+        );
+        assert_eq!(
+            security_key.configuration().expect("configuration").user_verification_preference,
+            Some(PublicKeyCredentialUserVerificationPreference::Discouraged)
         );
     }
 }

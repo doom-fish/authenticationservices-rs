@@ -98,7 +98,6 @@ pub struct PasswordRequest {
 }
 
 unsafe impl Send for PasswordRequest {}
-unsafe impl Sync for PasswordRequest {}
 
 impl Drop for PasswordRequest {
     fn drop(&mut self) {

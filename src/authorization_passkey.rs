@@ -566,6 +566,25 @@ fn validate_challenge(
     Ok(())
 }
 
+fn ensure_fixed_at_creation(
+    challenge: Option<&[u8]>,
+    client_data: Option<&PublicKeyCredentialClientData>,
+    current_challenge: Option<&[u8]>,
+    current_client_data: Option<&PublicKeyCredentialClientData>,
+) -> Result<(), AuthenticationServicesError> {
+    if challenge.is_some_and(|challenge| current_challenge != Some(challenge)) {
+        return Err(AuthenticationServicesError::InvalidArgument(
+            "the WebAuthn challenge is fixed when the request is created; pass None to keep it or create a new request".into(),
+        ));
+    }
+    if client_data.is_some_and(|client_data| current_client_data != Some(client_data)) {
+        return Err(AuthenticationServicesError::InvalidArgument(
+            "WebAuthn client data is fixed when the request is created; pass None to keep it or create a new request".into(),
+        ));
+    }
+    Ok(())
+}
+
 fn encode_bytes(bytes: &[u8]) -> String {
     STANDARD.encode(bytes)
 }
@@ -1434,7 +1453,6 @@ pub struct PasskeyRegistrationRequest {
 }
 
 unsafe impl Send for PasskeyRegistrationRequest {}
-unsafe impl Sync for PasskeyRegistrationRequest {}
 
 impl Drop for PasskeyRegistrationRequest {
     fn drop(&mut self) {
@@ -1474,6 +1492,13 @@ impl PasskeyRegistrationRequest {
         &self,
         options: &PlatformPasskeyRegistrationOptions,
     ) -> Result<(), AuthenticationServicesError> {
+        let current = self.configuration()?;
+        ensure_fixed_at_creation(
+            options.challenge.as_deref(),
+            options.client_data.as_ref(),
+            current.challenge.as_deref(),
+            current.client_data.as_ref(),
+        )?;
         let payload = platform_registration_options_to_payload(&self.relying_party_identifier, options);
         let json = serde_json::to_string(&payload)
             .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
@@ -1499,7 +1524,6 @@ pub struct PasskeyAssertionRequest {
 }
 
 unsafe impl Send for PasskeyAssertionRequest {}
-unsafe impl Sync for PasskeyAssertionRequest {}
 
 impl Drop for PasskeyAssertionRequest {
     fn drop(&mut self) {
@@ -1539,6 +1563,13 @@ impl PasskeyAssertionRequest {
         &self,
         options: &PlatformPasskeyAssertionOptions,
     ) -> Result<(), AuthenticationServicesError> {
+        let current = self.configuration()?;
+        ensure_fixed_at_creation(
+            options.challenge.as_deref(),
+            options.client_data.as_ref(),
+            current.challenge.as_deref(),
+            current.client_data.as_ref(),
+        )?;
         let payload = platform_assertion_options_to_payload(&self.relying_party_identifier, options);
         let json = serde_json::to_string(&payload)
             .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
@@ -1564,7 +1595,6 @@ pub struct SecurityKeyRegistrationRequest {
 }
 
 unsafe impl Send for SecurityKeyRegistrationRequest {}
-unsafe impl Sync for SecurityKeyRegistrationRequest {}
 
 impl Drop for SecurityKeyRegistrationRequest {
     fn drop(&mut self) {
@@ -1593,6 +1623,13 @@ impl SecurityKeyRegistrationRequest {
         &self,
         options: &SecurityKeyRegistrationOptions,
     ) -> Result<(), AuthenticationServicesError> {
+        let current = self.configuration()?;
+        ensure_fixed_at_creation(
+            options.challenge.as_deref(),
+            options.client_data.as_ref(),
+            current.challenge.as_deref(),
+            current.client_data.as_ref(),
+        )?;
         let payload = security_registration_options_to_payload(&self.relying_party_identifier, options);
         let json = serde_json::to_string(&payload)
             .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
@@ -1618,7 +1655,6 @@ pub struct SecurityKeyAssertionRequest {
 }
 
 unsafe impl Send for SecurityKeyAssertionRequest {}
-unsafe impl Sync for SecurityKeyAssertionRequest {}
 
 impl Drop for SecurityKeyAssertionRequest {
     fn drop(&mut self) {
@@ -1647,6 +1683,13 @@ impl SecurityKeyAssertionRequest {
         &self,
         options: &SecurityKeyAssertionOptions,
     ) -> Result<(), AuthenticationServicesError> {
+        let current = self.configuration()?;
+        ensure_fixed_at_creation(
+            options.challenge.as_deref(),
+            options.client_data.as_ref(),
+            current.challenge.as_deref(),
+            current.client_data.as_ref(),
+        )?;
         let payload = security_assertion_options_to_payload(&self.relying_party_identifier, options);
         let json = serde_json::to_string(&payload)
             .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;

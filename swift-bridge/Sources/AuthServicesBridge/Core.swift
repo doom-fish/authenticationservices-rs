@@ -117,6 +117,34 @@ final class AuthServicesAsyncResult<T> {
     }
 }
 
+final class AuthServicesRequestUse {
+    private let lock = NSLock()
+    private var controllers = 0
+
+    func acquire() {
+        lock.lock()
+        controllers += 1
+        lock.unlock()
+    }
+
+    func relinquish() {
+        lock.lock()
+        controllers -= 1
+        lock.unlock()
+    }
+
+    func mutate(_ body: () throws -> Void) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        guard controllers == 0 else {
+            throw AuthServicesBridgeError.invalidArgument(
+                "the request is in use by an authorization controller; update it before performing it or after the controller is released"
+            )
+        }
+        try body()
+    }
+}
+
 func authservicesBlockOnAsync<T>(
     timeoutSeconds: Int = 30,
     work: @escaping () async throws -> T,

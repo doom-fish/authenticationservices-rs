@@ -166,7 +166,6 @@ pub struct AppleIdRequest {
 }
 
 unsafe impl Send for AppleIdRequest {}
-unsafe impl Sync for AppleIdRequest {}
 
 impl Drop for AppleIdRequest {
     fn drop(&mut self) {

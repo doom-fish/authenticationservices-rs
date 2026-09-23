@@ -79,6 +79,7 @@ func authservicesSymmetricKeyBase64(_ key: SymmetricKey?) -> String? {
 
 final class ASPasskeyRegistrationRequestHandle {
     let request: ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest
+    let controllerUse = AuthServicesRequestUse()
 
     init(_ request: ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest) {
         self.request = request
@@ -87,6 +88,7 @@ final class ASPasskeyRegistrationRequestHandle {
 
 final class ASPasskeyAssertionRequestHandle {
     let request: ASAuthorizationPlatformPublicKeyCredentialAssertionRequest
+    let controllerUse = AuthServicesRequestUse()
 
     init(_ request: ASAuthorizationPlatformPublicKeyCredentialAssertionRequest) {
         self.request = request
@@ -95,6 +97,7 @@ final class ASPasskeyAssertionRequestHandle {
 
 final class ASSecurityKeyRegistrationRequestHandle {
     let request: ASAuthorizationSecurityKeyPublicKeyCredentialRegistrationRequest
+    let controllerUse = AuthServicesRequestUse()
 
     init(_ request: ASAuthorizationSecurityKeyPublicKeyCredentialRegistrationRequest) {
         self.request = request
@@ -103,6 +106,7 @@ final class ASSecurityKeyRegistrationRequestHandle {
 
 final class ASSecurityKeyAssertionRequestHandle {
     let request: ASAuthorizationSecurityKeyPublicKeyCredentialAssertionRequest
+    let controllerUse = AuthServicesRequestUse()
 
     init(_ request: ASAuthorizationSecurityKeyPublicKeyCredentialAssertionRequest) {
         self.request = request
@@ -880,7 +884,9 @@ public func authservices_passkey_registration_request_update_from_json(
             as: AuthServicesPlatformRegistrationRequestPayload.self
         )
         let handle = authservices_borrow(ptr, as: ASPasskeyRegistrationRequestHandle.self)
-        try authservicesApplyPlatformRegistrationRequestPayload(payload, to: handle.request)
+        try handle.controllerUse.mutate {
+            try authservicesApplyPlatformRegistrationRequestPayload(payload, to: handle.request)
+        }
         return AUTHSERVICES_OK
     } catch {
         return authservicesFail(outError, with: error)
@@ -978,7 +984,9 @@ public func authservices_passkey_assertion_request_update_from_json(
             as: AuthServicesPlatformAssertionRequestPayload.self
         )
         let handle = authservices_borrow(ptr, as: ASPasskeyAssertionRequestHandle.self)
-        try authservicesApplyPlatformAssertionRequestPayload(payload, to: handle.request)
+        try handle.controllerUse.mutate {
+            try authservicesApplyPlatformAssertionRequestPayload(payload, to: handle.request)
+        }
         return AUTHSERVICES_OK
     } catch {
         return authservicesFail(outError, with: error)
@@ -1066,7 +1074,9 @@ public func authservices_security_key_registration_request_update_from_json(
             as: AuthServicesSecurityKeyRegistrationRequestPayload.self
         )
         let handle = authservices_borrow(ptr, as: ASSecurityKeyRegistrationRequestHandle.self)
-        try authservicesApplySecurityKeyRegistrationRequestPayload(payload, to: handle.request)
+        try handle.controllerUse.mutate {
+            try authservicesApplySecurityKeyRegistrationRequestPayload(payload, to: handle.request)
+        }
         return AUTHSERVICES_OK
     } catch {
         return authservicesFail(outError, with: error)
@@ -1126,7 +1136,9 @@ public func authservices_security_key_assertion_request_update_from_json(
             as: AuthServicesSecurityKeyAssertionRequestPayload.self
         )
         let handle = authservices_borrow(ptr, as: ASSecurityKeyAssertionRequestHandle.self)
-        try authservicesApplySecurityKeyAssertionRequestPayload(payload, to: handle.request)
+        try handle.controllerUse.mutate {
+            try authservicesApplySecurityKeyAssertionRequestPayload(payload, to: handle.request)
+        }
         return AUTHSERVICES_OK
     } catch {
         return authservicesFail(outError, with: error)
