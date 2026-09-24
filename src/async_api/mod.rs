@@ -47,7 +47,7 @@ unsafe extern "C" fn authorization_success_async_cb(refcon: *mut c_void, json: *
     catch_user_panic(
         "authenticationservices::authorization_success_async_cb",
         || {
-            let json = unsafe { private::take_string(json) };
+            let json = unsafe { private::take_secret_string(json) };
             let result = serde_json::from_str(&json)
                 .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()));
             unsafe {

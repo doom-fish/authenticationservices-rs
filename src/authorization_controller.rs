@@ -7,6 +7,7 @@ use std::ptr;
 use std::sync::{Mutex, PoisonError};
 
 use serde::Deserialize;
+use zeroize::Zeroizing;
 
 use doom_fish_utils::callback_context::CallbackContext;
 use doom_fish_utils::panic_safe::catch_user_panic;
@@ -26,7 +27,7 @@ use crate::password_credential::PasswordCredential;
 use crate::private;
 
 /// Decoded Apple ID credential.
-#[derive(Clone, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Deserialize)]
 pub struct AppleIdCredential {
     #[serde(rename = "userIdentifier")]
     pub user_identifier: Option<String>,
@@ -34,9 +35,9 @@ pub struct AppleIdCredential {
     #[serde(rename = "fullName")]
     pub full_name: Option<String>,
     #[serde(rename = "identityToken")]
-    pub identity_token: Option<String>,
+    pub identity_token: Option<Zeroizing<String>>,
     #[serde(rename = "authorizationCode")]
-    pub authorization_code: Option<String>,
+    pub authorization_code: Option<Zeroizing<String>>,
     #[serde(rename = "realUserStatus")]
     pub real_user_status: Option<UserDetectionStatus>,
     #[serde(rename = "userAgeRange")]
@@ -44,7 +45,7 @@ pub struct AppleIdCredential {
 }
 
 /// Generic authorization result from any provider.
-#[derive(Clone, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Deserialize)]
 pub struct Authorization {
     pub provider: String,
     #[serde(rename = "userIdentifier")]
@@ -53,14 +54,14 @@ pub struct Authorization {
     #[serde(rename = "fullName")]
     pub full_name: Option<String>,
     #[serde(rename = "identityToken")]
-    pub identity_token: Option<String>,
+    pub identity_token: Option<Zeroizing<String>>,
     #[serde(rename = "authorizationCode")]
-    pub authorization_code: Option<String>,
+    pub authorization_code: Option<Zeroizing<String>>,
     #[serde(rename = "realUserStatus")]
     pub real_user_status: Option<UserDetectionStatus>,
     #[serde(rename = "userAgeRange")]
     pub user_age_range: Option<UserAgeRange>,
-    pub password: Option<String>,
+    pub password: Option<Zeroizing<String>>,
     #[serde(rename = "credentialID")]
     pub credential_id: Option<String>,
     #[serde(rename = "rawAttestationObject")]
@@ -77,18 +78,116 @@ pub struct Authorization {
     #[serde(rename = "largeBlobResultKind")]
     pub large_blob_result_kind: Option<String>,
     #[serde(rename = "largeBlobData")]
-    pub large_blob_data: Option<String>,
+    pub large_blob_data: Option<Zeroizing<String>>,
     #[serde(rename = "largeBlobWriteSucceeded")]
     pub large_blob_write_succeeded: Option<bool>,
     #[serde(rename = "largeBlobSupported")]
     pub large_blob_supported: Option<bool>,
     #[serde(rename = "prfFirst")]
-    pub prf_first: Option<String>,
+    pub prf_first: Option<Zeroizing<String>>,
     #[serde(rename = "prfSecond")]
-    pub prf_second: Option<String>,
+    pub prf_second: Option<Zeroizing<String>>,
     #[serde(rename = "prfSupported")]
     pub prf_supported: Option<bool>,
 }
+
+fn secret_str(value: Option<&Zeroizing<String>>) -> Option<&[u8]> {
+    value.map(|value| value.as_bytes())
+}
+
+impl PartialEq for AppleIdCredential {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            user_identifier,
+            email,
+            full_name,
+            identity_token,
+            authorization_code,
+            real_user_status,
+            user_age_range,
+        } = self;
+        let secrets_match = private::optional_secret_eq(
+            secret_str(identity_token.as_ref()),
+            secret_str(other.identity_token.as_ref()),
+        ) & private::optional_secret_eq(
+            secret_str(authorization_code.as_ref()),
+            secret_str(other.authorization_code.as_ref()),
+        );
+        secrets_match
+            && *user_identifier == other.user_identifier
+            && *email == other.email
+            && *full_name == other.full_name
+            && *real_user_status == other.real_user_status
+            && *user_age_range == other.user_age_range
+    }
+}
+
+impl Eq for AppleIdCredential {}
+
+impl PartialEq for Authorization {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            provider,
+            user_identifier,
+            email,
+            full_name,
+            identity_token,
+            authorization_code,
+            real_user_status,
+            user_age_range,
+            password,
+            credential_id,
+            raw_attestation_object,
+            raw_authenticator_data,
+            signature,
+            user_id,
+            attachment,
+            used_app_id,
+            transports,
+            large_blob_result_kind,
+            large_blob_data,
+            large_blob_write_succeeded,
+            large_blob_supported,
+            prf_first,
+            prf_second,
+            prf_supported,
+        } = self;
+        let secrets_match = [
+            (identity_token, &other.identity_token),
+            (authorization_code, &other.authorization_code),
+            (password, &other.password),
+            (large_blob_data, &other.large_blob_data),
+            (prf_first, &other.prf_first),
+            (prf_second, &other.prf_second),
+        ]
+        .into_iter()
+        .fold(true, |matched, (left, right)| {
+            private::optional_secret_eq(secret_str(left.as_ref()), secret_str(right.as_ref()))
+                & matched
+        });
+        secrets_match
+            && *provider == other.provider
+            && *user_identifier == other.user_identifier
+            && *email == other.email
+            && *full_name == other.full_name
+            && *real_user_status == other.real_user_status
+            && *user_age_range == other.user_age_range
+            && *credential_id == other.credential_id
+            && *raw_attestation_object == other.raw_attestation_object
+            && *raw_authenticator_data == other.raw_authenticator_data
+            && *signature == other.signature
+            && *user_id == other.user_id
+            && *attachment == other.attachment
+            && *used_app_id == other.used_app_id
+            && *transports == other.transports
+            && *large_blob_result_kind == other.large_blob_result_kind
+            && *large_blob_write_succeeded == other.large_blob_write_succeeded
+            && *large_blob_supported == other.large_blob_supported
+            && *prf_supported == other.prf_supported
+    }
+}
+
+impl Eq for Authorization {}
 
 impl fmt::Debug for AppleIdCredential {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -347,7 +446,7 @@ unsafe extern "C" fn on_success_trampoline(refcon: *mut c_void, json: *mut core:
     catch_user_panic(
         "authenticationservices::on_success_trampoline",
         || {
-            let json = unsafe { private::take_string(json) };
+            let json = unsafe { private::take_secret_string(json) };
             let result = serde_json::from_str(&json)
                 .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()));
             store_result(refcon, result);

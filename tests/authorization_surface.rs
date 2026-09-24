@@ -67,7 +67,7 @@ fn apple_id_button_and_aliases_are_available() {
         authorization_code: None,
         real_user_status: None,
         user_age_range: None,
-        password: Some("secret".into()),
+        password: Some(String::from("secret").into()),
         credential_id: None,
         raw_attestation_object: None,
         raw_authenticator_data: None,

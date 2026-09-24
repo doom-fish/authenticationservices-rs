@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   web-session handles without checking their class, so a handle of the wrong
   type was reinterpreted as the expected one. Every bridge function now checks
   the class (`as?`) and a mismatch is `AuthenticationServicesError::InvalidArgument`.
+- Identity tokens, authorization codes, passwords, PRF outputs and large-blob
+  data were plain `String`/`Vec<u8>` values that were never wiped and were
+  compared with derived, variable-time `PartialEq`. They are `Zeroizing` now
+  and compare in constant time, and the bridge's JSON buffer that carries an
+  authorization or password credential is wiped before it is freed.
 
 ### Fixed
 
@@ -93,7 +98,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `AsyncWebAuthenticationSession::start` off the main thread.
 - Dropping `AuthorizationGuard` or `WebAuthenticationSessionGuard` now cancels
   the controller or session.
+- **Breaking:** `Authorization::{identity_token, authorization_code,
+  password, large_blob_data, prf_first, prf_second}` and
+  `AppleIdCredential::{identity_token, authorization_code}` are
+  `Option<Zeroizing<String>>`, `PasswordCredential::password` is
+  `Zeroizing<String>`, `PrfOutput::{first, second}` are
+  `Option<Zeroizing<Vec<u8>>>`, and `LargeBlobAssertionOutputResult::Read`
+  holds `Zeroizing<Vec<u8>>`.
 - `doom-fish-utils` requirement is now `>=0.4.1, <0.5`.
+- New dependency `zeroize` (`>=1.6, <1.9` with its `serde` feature; 1.9 needs
+  Rust 1.85).
 - `rust-version` is now 1.82.
 
 ## [0.3.2] - 2026-06-06

@@ -15,6 +15,7 @@ use std::ptr;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroizing;
 
 use crate::authorization_provider::RequestKind;
 use crate::credential_provider::{
@@ -124,11 +125,23 @@ pub struct LargeBlobAssertionInput {
 }
 
 /// `ASAuthorizationPublicKeyCredentialLargeBlobAssertionOutput.OperationResult`.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub enum LargeBlobAssertionOutputResult {
-    Read(Vec<u8>),
+    Read(Zeroizing<Vec<u8>>),
     Write(bool),
 }
+
+impl PartialEq for LargeBlobAssertionOutputResult {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Read(left), Self::Read(right)) => private::constant_time_eq(left, right),
+            (Self::Write(left), Self::Write(right)) => left == right,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for LargeBlobAssertionOutputResult {}
 
 impl fmt::Debug for LargeBlobAssertionOutputResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -174,12 +187,32 @@ pub struct PrfAssertionInput {
 }
 
 /// Shared PRF output shape.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct PrfOutput {
-    pub first: Option<Vec<u8>>,
-    pub second: Option<Vec<u8>>,
+    pub first: Option<Zeroizing<Vec<u8>>>,
+    pub second: Option<Zeroizing<Vec<u8>>>,
     pub is_supported: Option<bool>,
 }
+
+impl PartialEq for PrfOutput {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            first,
+            second,
+            is_supported,
+        } = self;
+        let secrets_match = private::optional_secret_eq(
+            first.as_deref().map(Vec::as_slice),
+            other.first.as_deref().map(Vec::as_slice),
+        ) & private::optional_secret_eq(
+            second.as_deref().map(Vec::as_slice),
+            other.second.as_deref().map(Vec::as_slice),
+        );
+        secrets_match && *is_supported == other.is_supported
+    }
+}
+
+impl Eq for PrfOutput {}
 
 impl fmt::Debug for PrfOutput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1739,18 +1772,24 @@ impl SecurityKeyAssertionRequest {
     }
 }
 
+fn decode_secret(
+    value: Option<Zeroizing<String>>,
+) -> Result<Option<Zeroizing<Vec<u8>>>, AuthenticationServicesError> {
+    value.map(|value| decode_bytes(&value).map(Zeroizing::new)).transpose()
+}
+
 impl PrfOutput {
     pub(crate) fn from_parts(
-        first: Option<String>,
-        second: Option<String>,
+        first: Option<Zeroizing<String>>,
+        second: Option<Zeroizing<String>>,
         is_supported: Option<bool>,
     ) -> Result<Option<Self>, AuthenticationServicesError> {
         if first.is_none() && second.is_none() && is_supported.is_none() {
             return Ok(None);
         }
         Ok(Some(Self {
-            first: decode_optional_bytes(first)?,
-            second: decode_optional_bytes(second)?,
+            first: decode_secret(first)?,
+            second: decode_secret(second)?,
             is_supported,
         }))
     }
@@ -1759,13 +1798,15 @@ impl PrfOutput {
 impl LargeBlobAssertionOutput {
     pub(crate) fn from_parts(
         kind: Option<String>,
-        data: Option<String>,
+        data: Option<Zeroizing<String>>,
         success: Option<bool>,
     ) -> Result<Option<Self>, AuthenticationServicesError> {
         match kind.as_deref() {
             None => Ok(None),
             Some("read") => Ok(Some(Self {
-                result: LargeBlobAssertionOutputResult::Read(decode_bytes(data.as_deref().unwrap_or_default())?),
+                result: LargeBlobAssertionOutputResult::Read(
+                    decode_secret(data)?.unwrap_or_default(),
+                ),
             })),
             Some("write") => Ok(Some(Self {
                 result: LargeBlobAssertionOutputResult::Write(success.unwrap_or(false)),
@@ -1783,8 +1824,8 @@ impl PlatformPublicKeyCredentialRegistration {
         raw_attestation_object: Option<String>,
         attachment: Option<i32>,
         large_blob_supported: Option<bool>,
-        prf_first: Option<String>,
-        prf_second: Option<String>,
+        prf_first: Option<Zeroizing<String>>,
+        prf_second: Option<Zeroizing<String>>,
         prf_supported: Option<bool>,
     ) -> Result<Option<Self>, AuthenticationServicesError> {
         let Some(credential_id) = credential_id else {
@@ -1808,10 +1849,10 @@ impl PlatformPublicKeyCredentialAssertion {
         user_id: Option<String>,
         attachment: Option<i32>,
         large_blob_kind: Option<String>,
-        large_blob_data: Option<String>,
+        large_blob_data: Option<Zeroizing<String>>,
         large_blob_write_succeeded: Option<bool>,
-        prf_first: Option<String>,
-        prf_second: Option<String>,
+        prf_first: Option<Zeroizing<String>>,
+        prf_second: Option<Zeroizing<String>>,
     ) -> Result<Option<Self>, AuthenticationServicesError> {
         let Some(credential_id) = credential_id else {
             return Ok(None);

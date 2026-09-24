@@ -13,7 +13,7 @@ fn authorization_helpers_decode_password_results() {
         authorization_code: None,
         real_user_status: None,
         user_age_range: None,
-        password: Some("secret".into()),
+        password: Some(String::from("secret").into()),
         credential_id: None,
         raw_attestation_object: None,
         raw_authenticator_data: None,
@@ -35,7 +35,7 @@ fn authorization_helpers_decode_password_results() {
         authorization.password_credential(),
         Some(PasswordCredential {
             user: "alice@example.com".into(),
-            password: "secret".into(),
+            password: String::from("secret").into(),
         })
     );
     assert!(authorization.apple_id_credential().is_none());
@@ -58,11 +58,11 @@ fn debug_output_redacts_tokens_passwords_and_signatures() {
         user_identifier: Some("user-1".into()),
         email: None,
         full_name: None,
-        identity_token: Some("eyJ-identity-token".into()),
-        authorization_code: Some("auth-code-123".into()),
+        identity_token: Some(String::from("eyJ-identity-token").into()),
+        authorization_code: Some(String::from("auth-code-123").into()),
         real_user_status: None,
         user_age_range: None,
-        password: Some("hunter2".into()),
+        password: Some(String::from("hunter2").into()),
         credential_id: None,
         raw_attestation_object: None,
         raw_authenticator_data: None,
@@ -72,10 +72,10 @@ fn debug_output_redacts_tokens_passwords_and_signatures() {
         used_app_id: None,
         transports: None,
         large_blob_result_kind: None,
-        large_blob_data: Some("YmxvYg==".into()),
+        large_blob_data: Some(String::from("YmxvYg==").into()),
         large_blob_write_succeeded: None,
         large_blob_supported: None,
-        prf_first: Some("cHJmLWZpcnN0".into()),
+        prf_first: Some(String::from("cHJmLWZpcnN0").into()),
         prf_second: None,
         prf_supported: None,
     };
@@ -102,9 +102,74 @@ fn debug_output_redacts_tokens_passwords_and_signatures() {
 
     let password = PasswordCredential {
         user: "alice".into(),
-        password: "hunter2".into(),
+        password: String::from("hunter2").into(),
     };
     let rendered = format!("{password:?}");
     assert!(!rendered.contains("hunter2"), "{rendered}");
     assert!(rendered.contains("alice"), "{rendered}");
+}
+
+#[test]
+fn secret_fields_still_decide_equality() {
+    let authorization = Authorization {
+        provider: "apple_id".into(),
+        user_identifier: Some("user-1".into()),
+        email: None,
+        full_name: None,
+        identity_token: Some(String::from("token-a").into()),
+        authorization_code: Some(String::from("code-a").into()),
+        real_user_status: None,
+        user_age_range: None,
+        password: None,
+        credential_id: None,
+        raw_attestation_object: None,
+        raw_authenticator_data: None,
+        signature: None,
+        user_id: None,
+        attachment: None,
+        used_app_id: None,
+        transports: None,
+        large_blob_result_kind: None,
+        large_blob_data: None,
+        large_blob_write_succeeded: None,
+        large_blob_supported: None,
+        prf_first: Some(String::from("cHJm").into()),
+        prf_second: None,
+        prf_supported: None,
+    };
+    let same = authorization.clone();
+    assert_eq!(authorization, same);
+
+    let mut other_token = authorization.clone();
+    other_token.identity_token = Some(String::from("token-b").into());
+    assert_ne!(authorization, other_token);
+
+    let mut shorter_code = authorization.clone();
+    shorter_code.authorization_code = Some(String::from("code").into());
+    assert_ne!(authorization, shorter_code);
+
+    let mut no_prf = authorization.clone();
+    no_prf.prf_first = None;
+    assert_ne!(authorization, no_prf);
+
+    let mut other_user = authorization.clone();
+    other_user.user_identifier = Some("user-2".into());
+    assert_ne!(authorization, other_user);
+
+    let apple_id = authorization.apple_id_credential().expect("apple id");
+    assert_eq!(Some(apple_id.clone()), same.apple_id_credential());
+    assert_ne!(Some(apple_id), other_token.apple_id_credential());
+
+    let password = PasswordCredential {
+        user: "alice".into(),
+        password: String::from("hunter2").into(),
+    };
+    assert_eq!(password, password.clone());
+    assert_ne!(
+        password,
+        PasswordCredential {
+            user: "alice".into(),
+            password: String::from("hunter3").into(),
+        }
+    );
 }

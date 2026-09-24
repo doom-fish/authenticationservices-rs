@@ -5,6 +5,7 @@ use std::fmt;
 use std::ptr;
 
 use serde::Deserialize;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::error::AuthenticationServicesError;
 use crate::ffi;
@@ -13,15 +14,25 @@ use crate::private;
 #[derive(Deserialize)]
 struct PasswordCredentialPayload {
     user: String,
-    password: String,
+    password: Zeroizing<String>,
 }
 
 /// A decoded `ASPasswordCredential`.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct PasswordCredential {
     pub user: String,
-    pub password: String,
+    pub password: Zeroizing<String>,
 }
+
+impl PartialEq for PasswordCredential {
+    fn eq(&self, other: &Self) -> bool {
+        let Self { user, password } = self;
+        *user == other.user
+            && private::constant_time_eq(password.as_bytes(), other.password.as_bytes())
+    }
+}
+
+impl Eq for PasswordCredential {}
 
 impl fmt::Debug for PasswordCredential {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -47,6 +58,7 @@ impl PasswordCredential {
                 &raw mut err_ptr,
             )
         };
+        password_c.into_bytes_with_nul().zeroize();
         if handle.is_null() {
             let message = if err_ptr.is_null() {
                 "password_credential_create returned null".to_owned()
@@ -65,7 +77,7 @@ impl PasswordCredential {
                 "password_credential_copy_json returned null".into(),
             ));
         }
-        let json = unsafe { private::take_string(json_ptr) };
+        let json = unsafe { private::take_secret_string(json_ptr) };
         let payload: PasswordCredentialPayload =
             serde_json::from_str(&json).map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
         Ok(Self {

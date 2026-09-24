@@ -32,11 +32,11 @@ fn passkey_assertion_debug_output_redacts_signatures_user_ids_and_prf_outputs() 
         user_id: vec![0xCD; 8],
         attachment: None,
         large_blob: Some(LargeBlobAssertionOutput {
-            result: LargeBlobAssertionOutputResult::Read(vec![0xEE; 8]),
+            result: LargeBlobAssertionOutputResult::Read(vec![0xEE; 8].into()),
         }),
         prf: Some(PrfOutput {
-            first: Some(vec![0xF1; 8]),
-            second: Some(vec![0xF2; 8]),
+            first: Some(vec![0xF1; 8].into()),
+            second: Some(vec![0xF2; 8].into()),
             is_supported: Some(true),
         }),
     };
