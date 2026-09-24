@@ -127,7 +127,7 @@ impl Drop for AuthorizationFuture {
     fn drop(&mut self) {
         if !self.handle.is_null() {
             unsafe {
-                ffi::authservices_authorization_controller_cancel(self.handle);
+                ffi::authservices_authorization_controller_cancel(self.handle, ptr::null_mut());
                 ffi::authservices_authorization_controller_release(self.handle);
             }
             self.handle = ptr::null_mut();
@@ -162,7 +162,7 @@ impl Drop for WebAuthenticationSessionFuture {
     fn drop(&mut self) {
         if !self.handle.is_null() {
             unsafe {
-                ffi::authservices_web_auth_session_cancel(self.handle);
+                ffi::authservices_web_auth_session_cancel(self.handle, ptr::null_mut());
                 ffi::authservices_web_auth_session_release(self.handle);
             }
             self.handle = ptr::null_mut();
@@ -212,8 +212,9 @@ impl AsyncAuthorizationController {
         let _ = self;
         let (inner, refcon) =
             AsyncCompletion::<Result<Authorization, AuthenticationServicesError>>::create();
+        let mut handle = ptr::null_mut();
         let mut err_ptr = ptr::null_mut();
-        let handle = unsafe {
+        let status = unsafe {
             ffi::authservices_authorization_controller_create_v2(
                 requests
                     .apple_id
@@ -237,23 +238,29 @@ impl AsyncAuthorizationController {
                 None,
                 Some(authorization_success_async_cb),
                 Some(authorization_error_async_cb),
+                &raw mut handle,
                 &raw mut err_ptr,
             )
         };
-        if handle.is_null() {
-            let message = if err_ptr.is_null() {
-                "authorization_controller_create_v2 returned null".to_owned()
-            } else {
-                unsafe { private::take_string(err_ptr) }
-            };
+        let created = private::status_result(status, err_ptr, "authorization_controller_create_v2")
+            .and_then(|()| {
+                if handle.is_null() {
+                    Err(AuthenticationServicesError::FrameworkError(
+                        "authorization_controller_create_v2 returned null".into(),
+                    ))
+                } else {
+                    Ok(())
+                }
+            });
+        if let Err(error) = created {
             unsafe {
                 AsyncCompletion::<Result<Authorization, AuthenticationServicesError>>::complete_err(
                     refcon,
-                    message.clone(),
+                    error.to_string(),
                 );
             };
             drop(inner);
-            return Err(AuthenticationServicesError::FrameworkError(message));
+            return Err(error);
         }
 
         let mut start_err_ptr = ptr::null_mut();

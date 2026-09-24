@@ -307,7 +307,7 @@ impl Drop for AuthorizationGuard {
         self.context.deactivate();
         if !self.handle.is_null() {
             unsafe {
-                ffi::authservices_authorization_controller_cancel(self.handle);
+                ffi::authservices_authorization_controller_cancel(self.handle, ptr::null_mut());
                 ffi::authservices_authorization_controller_release(self.handle);
             }
         }
@@ -316,15 +316,19 @@ impl Drop for AuthorizationGuard {
 
 impl AuthorizationGuard {
     /// Instruct the controller to cancel any in-flight request UI.
-    pub fn cancel(&self) {
-        unsafe { ffi::authservices_authorization_controller_cancel(self.handle) };
+    pub fn cancel(&self) -> Result<(), AuthenticationServicesError> {
+        let mut err_ptr = ptr::null_mut();
+        let status =
+            unsafe { ffi::authservices_authorization_controller_cancel(self.handle, &raw mut err_ptr) };
+        private::status_result(status, err_ptr, "authorization_controller_cancel")
     }
 
     /// Returns the number of request objects held by the controller.
-    #[must_use]
-    pub fn request_count(&self) -> usize {
-        let count = unsafe { ffi::authservices_authorization_controller_request_count(self.handle) };
-        usize::try_from(count).unwrap_or(usize::MAX)
+    pub fn request_count(&self) -> Result<usize, AuthenticationServicesError> {
+        let count = private::checked(|error| unsafe {
+            ffi::authservices_authorization_controller_request_count(self.handle, error)
+        })?;
+        Ok(usize::try_from(count).unwrap_or(usize::MAX))
     }
 
     /// Take the result if the asynchronous callback has already delivered one.
@@ -401,8 +405,9 @@ impl AuthorizationController {
         options: AuthorizationControllerRequestOptions,
     ) -> Result<AuthorizationGuard, AuthenticationServicesError> {
         let context = CallbackContext::new(Mutex::new(CallbackState { result: None }));
+        let mut handle = ptr::null_mut();
         let mut err_ptr = ptr::null_mut();
-        let handle = unsafe {
+        let status = unsafe {
             ffi::authservices_authorization_controller_create_v2(
                 requests.apple_id.map_or(ptr::null_mut(), |request| request.ptr),
                 requests.password.map_or(ptr::null_mut(), |request| request.ptr),
@@ -422,16 +427,15 @@ impl AuthorizationController {
                 Some(CallbackContext::<AuthorizationCell>::RELEASE),
                 Some(on_success_trampoline),
                 Some(on_error_trampoline),
+                &raw mut handle,
                 &raw mut err_ptr,
             )
         };
+        private::status_result(status, err_ptr, "authorization_controller_create_v2")?;
         if handle.is_null() {
-            let message = if err_ptr.is_null() {
-                "authorization_controller_create_v2 returned null".to_owned()
-            } else {
-                unsafe { private::take_string(err_ptr) }
-            };
-            return Err(AuthenticationServicesError::FrameworkError(message));
+            return Err(AuthenticationServicesError::FrameworkError(
+                "authorization_controller_create_v2 returned null".into(),
+            ));
         }
         let guard = AuthorizationGuard { handle, context };
         let mut start_err_ptr = ptr::null_mut();
@@ -462,8 +466,18 @@ mod tests {
 
     use doom_fish_utils::callback_context::CallbackContext;
 
-    use super::{on_error_trampoline, on_success_trampoline, AuthorizationCell, CallbackState};
-    use crate::authorization_apple_id_provider::{AppleIdProvider, AppleIdRequestConfiguration, AppleIdScope};
+    use std::mem::ManuallyDrop;
+
+    use super::{
+        on_error_trampoline, on_success_trampoline, AuthorizationCell, AuthorizationController,
+        AuthorizationControllerRequestOptions, AuthorizationControllerRequests,
+        AuthorizationGuard, CallbackState,
+    };
+    use crate::authorization_apple_id_provider::{
+        AppleIdProvider, AppleIdRequest, AppleIdRequestConfiguration, AppleIdScope,
+    };
+    use crate::authorization_provider::{PasswordProvider, PasswordRequest};
+    use crate::private::{assert_wrong_handle, status_result};
     use crate::authorization_passkey::{
         PlatformPasskeyAssertionOptions, PlatformPublicKeyCredentialProvider,
         PublicKeyCredentialUserVerificationPreference, SecurityKeyAssertionOptions,
@@ -548,8 +562,9 @@ mod tests {
             })
             .expect("security-key request");
         let context = CallbackContext::new(Mutex::new(CallbackState { result: None }));
+        let mut controller = core::ptr::null_mut();
         let mut err_ptr = core::ptr::null_mut();
-        let controller = unsafe {
+        let status = unsafe {
             ffi::authservices_authorization_controller_create_v2(
                 apple_id.ptr,
                 core::ptr::null_mut(),
@@ -561,9 +576,11 @@ mod tests {
                 Some(CallbackContext::<AuthorizationCell>::RELEASE),
                 Some(on_success_trampoline),
                 Some(on_error_trampoline),
+                &raw mut controller,
                 &raw mut err_ptr,
             )
         };
+        assert_eq!(status, ffi::status::OK);
         assert!(!controller.is_null());
 
         let apple_id_configuration = AppleIdRequestConfiguration {
@@ -603,5 +620,50 @@ mod tests {
             security_key.configuration().expect("configuration").user_verification_preference,
             Some(PublicKeyCredentialUserVerificationPreference::Discouraged)
         );
+    }
+
+    #[test]
+    fn request_and_controller_handles_of_another_class_are_rejected() {
+        let apple_id = AppleIdProvider::new().create_request(None).expect("Apple ID request");
+        let password = PasswordProvider::new().create_request().expect("password request");
+
+        let apple_id_from_password = ManuallyDrop::new(AppleIdRequest { ptr: password.ptr });
+        assert_wrong_handle(apple_id_from_password.kind());
+        assert_wrong_handle(apple_id_from_password.configuration());
+        assert_wrong_handle(apple_id_from_password.update(&AppleIdRequestConfiguration::default()));
+
+        let password_from_apple_id = ManuallyDrop::new(PasswordRequest { ptr: apple_id.ptr });
+        assert_wrong_handle(password_from_apple_id.kind());
+
+        assert_wrong_handle(AuthorizationController::new().perform_requests_with_options(
+            AuthorizationControllerRequests {
+                apple_id: Some(&apple_id_from_password),
+                ..AuthorizationControllerRequests::default()
+            },
+            AuthorizationControllerRequestOptions::empty(),
+        ));
+        assert_wrong_handle(AuthorizationController::new().perform_requests_with_options(
+            AuthorizationControllerRequests {
+                password: Some(&password_from_apple_id),
+                ..AuthorizationControllerRequests::default()
+            },
+            AuthorizationControllerRequestOptions::empty(),
+        ));
+
+        let guard = ManuallyDrop::new(AuthorizationGuard {
+            handle: apple_id.ptr,
+            context: CallbackContext::new(Mutex::new(CallbackState { result: None })),
+        });
+        assert_wrong_handle(guard.cancel());
+        assert_wrong_handle(guard.request_count());
+        let mut err_ptr = core::ptr::null_mut();
+        let status = unsafe {
+            ffi::authservices_authorization_controller_perform_requests_with_options(
+                apple_id.ptr,
+                0,
+                &raw mut err_ptr,
+            )
+        };
+        assert_wrong_handle(status_result(status, err_ptr, "perform_requests_with_options"));
     }
 }

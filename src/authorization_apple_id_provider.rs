@@ -178,7 +178,9 @@ impl Drop for AppleIdRequest {
 impl AppleIdRequest {
     /// Returns metadata about the request kind.
     pub fn kind(&self) -> Result<crate::authorization_provider::RequestKind, AuthenticationServicesError> {
-        let json_ptr = unsafe { ffi::authservices_apple_id_request_kind_json(self.ptr) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_apple_id_request_kind_json(self.ptr, error)
+        })?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "apple_id_request_kind_json returned null".into(),
@@ -190,7 +192,9 @@ impl AppleIdRequest {
 
     /// Returns the full mutable request configuration.
     pub fn configuration(&self) -> Result<AppleIdRequestConfiguration, AuthenticationServicesError> {
-        let json_ptr = unsafe { ffi::authservices_apple_id_request_copy_json(self.ptr) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_apple_id_request_copy_json(self.ptr, error)
+        })?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "apple_id_request_copy_json returned null".into(),

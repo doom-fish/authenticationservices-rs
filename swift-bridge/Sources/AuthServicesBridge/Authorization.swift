@@ -367,84 +367,46 @@ private func authservicesCreateController(
     securityKeyAssertionRequest: UnsafeMutableRawPointer?,
     context: AuthServicesCallbackContext,
     onSuccess: @escaping @convention(c) (UnsafeMutableRawPointer?, UnsafeMutablePointer<CChar>?) -> Void,
-    onError: @escaping @convention(c) (UnsafeMutableRawPointer?, Int32, UnsafeMutablePointer<CChar>?) -> Void,
-    outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
-) -> UnsafeMutableRawPointer? {
+    onError: @escaping @convention(c) (UnsafeMutableRawPointer?, Int32, UnsafeMutablePointer<CChar>?) -> Void
+) throws -> AuthControllerHandle {
     var requests: [ASAuthorizationRequest] = []
     var requestUses: [AuthServicesRequestUse] = []
     if let appleIDRequest {
-        let handle = authservices_borrow(appleIDRequest, as: ASAppleIDRequestHandle.self)
+        let handle = try authservices_borrow(appleIDRequest, as: ASAppleIDRequestHandle.self)
         requests.append(handle.request)
         requestUses.append(handle.controllerUse)
     }
     if let passwordRequest {
-        requests.append(authservices_borrow(passwordRequest, as: ASPasswordRequestHandle.self).request)
+        requests.append(try authservices_borrow(passwordRequest, as: ASPasswordRequestHandle.self).request)
     }
     if let passkeyRegistrationRequest {
-        let handle = authservices_borrow(passkeyRegistrationRequest, as: ASPasskeyRegistrationRequestHandle.self)
+        let handle = try authservices_borrow(passkeyRegistrationRequest, as: ASPasskeyRegistrationRequestHandle.self)
         requests.append(handle.request)
         requestUses.append(handle.controllerUse)
     }
     if let passkeyAssertionRequest {
-        let handle = authservices_borrow(passkeyAssertionRequest, as: ASPasskeyAssertionRequestHandle.self)
+        let handle = try authservices_borrow(passkeyAssertionRequest, as: ASPasskeyAssertionRequestHandle.self)
         requests.append(handle.request)
         requestUses.append(handle.controllerUse)
     }
     if let securityKeyRegistrationRequest {
-        let handle = authservices_borrow(securityKeyRegistrationRequest, as: ASSecurityKeyRegistrationRequestHandle.self)
+        let handle = try authservices_borrow(securityKeyRegistrationRequest, as: ASSecurityKeyRegistrationRequestHandle.self)
         requests.append(handle.request)
         requestUses.append(handle.controllerUse)
     }
     if let securityKeyAssertionRequest {
-        let handle = authservices_borrow(securityKeyAssertionRequest, as: ASSecurityKeyAssertionRequestHandle.self)
+        let handle = try authservices_borrow(securityKeyAssertionRequest, as: ASSecurityKeyAssertionRequestHandle.self)
         requests.append(handle.request)
         requestUses.append(handle.controllerUse)
     }
     guard !requests.isEmpty else {
-        authservicesPopulateError(
-            outError,
-            with: AuthServicesBridgeError.invalidArgument("at least one authorization request is required")
-        )
-        return nil
+        throw AuthServicesBridgeError.invalidArgument("at least one authorization request is required")
     }
     let delegate = AuthControllerDelegate(context: context, onSuccess: onSuccess, onError: onError)
     let controller = ASAuthorizationController(authorizationRequests: requests)
     controller.delegate = delegate
     controller.presentationContextProvider = delegate
-    return authservices_retain(AuthControllerHandle(controller: controller, delegate: delegate, requestUses: requestUses))
-}
-
-@_cdecl("authservices_authorization_controller_create")
-public func authservices_authorization_controller_create(
-    _ appleIDRequest: UnsafeMutableRawPointer?,
-    _ passwordRequest: UnsafeMutableRawPointer?,
-    _ passkeyRegistrationRequest: UnsafeMutableRawPointer?,
-    _ passkeyAssertionRequest: UnsafeMutableRawPointer?,
-    _ refcon: UnsafeMutableRawPointer?,
-    _ onSuccess: (@convention(c) (UnsafeMutableRawPointer?, UnsafeMutablePointer<CChar>?) -> Void)?,
-    _ onError: (@convention(c) (UnsafeMutableRawPointer?, Int32, UnsafeMutablePointer<CChar>?) -> Void)?,
-    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
-) -> UnsafeMutableRawPointer? {
-    let context = AuthServicesCallbackContext(refcon, release: nil)
-    guard let onSuccess, let onError else {
-        authservicesPopulateError(
-            outError,
-            with: AuthServicesBridgeError.invalidArgument("authorization controller callbacks are required")
-        )
-        return nil
-    }
-    return authservicesCreateController(
-        appleIDRequest: appleIDRequest,
-        passwordRequest: passwordRequest,
-        passkeyRegistrationRequest: passkeyRegistrationRequest,
-        passkeyAssertionRequest: passkeyAssertionRequest,
-        securityKeyRegistrationRequest: nil,
-        securityKeyAssertionRequest: nil,
-        context: context,
-        onSuccess: onSuccess,
-        onError: onError,
-        outError: outError
-    )
+    return AuthControllerHandle(controller: controller, delegate: delegate, requestUses: requestUses)
 }
 
 @_cdecl("authservices_authorization_controller_create_v2")
@@ -459,36 +421,34 @@ public func authservices_authorization_controller_create_v2(
     _ release: AuthServicesContextRelease?,
     _ onSuccess: (@convention(c) (UnsafeMutableRawPointer?, UnsafeMutablePointer<CChar>?) -> Void)?,
     _ onError: (@convention(c) (UnsafeMutableRawPointer?, Int32, UnsafeMutablePointer<CChar>?) -> Void)?,
+    _ outController: UnsafeMutablePointer<UnsafeMutableRawPointer?>,
     _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
-) -> UnsafeMutableRawPointer? {
+) -> Int32 {
+    outController.pointee = nil
     let context = AuthServicesCallbackContext(refcon, release: release)
     guard let onSuccess, let onError else {
-        authservicesPopulateError(
+        return authservicesFail(
             outError,
             with: AuthServicesBridgeError.invalidArgument("authorization controller callbacks are required")
         )
-        return nil
     }
-    return authservicesCreateController(
-        appleIDRequest: appleIDRequest,
-        passwordRequest: passwordRequest,
-        passkeyRegistrationRequest: passkeyRegistrationRequest,
-        passkeyAssertionRequest: passkeyAssertionRequest,
-        securityKeyRegistrationRequest: securityKeyRegistrationRequest,
-        securityKeyAssertionRequest: securityKeyAssertionRequest,
-        context: context,
-        onSuccess: onSuccess,
-        onError: onError,
-        outError: outError
-    )
-}
-
-@_cdecl("authservices_authorization_controller_perform_requests")
-public func authservices_authorization_controller_perform_requests(_ ptr: UnsafeMutableRawPointer?) {
-    guard let ptr else { return }
-    let handle = authservices_borrow(ptr, as: AuthControllerHandle.self)
-    DispatchQueue.main.async {
-        handle.controller.performRequests()
+    do {
+        outController.pointee = authservices_retain(
+            try authservicesCreateController(
+                appleIDRequest: appleIDRequest,
+                passwordRequest: passwordRequest,
+                passkeyRegistrationRequest: passkeyRegistrationRequest,
+                passkeyAssertionRequest: passkeyAssertionRequest,
+                securityKeyRegistrationRequest: securityKeyRegistrationRequest,
+                securityKeyAssertionRequest: securityKeyAssertionRequest,
+                context: context,
+                onSuccess: onSuccess,
+                onError: onError
+            )
+        )
+        return AUTHSERVICES_OK
+    } catch {
+        return authservicesFail(outError, with: error)
     }
 }
 
@@ -498,15 +458,16 @@ public func authservices_authorization_controller_perform_requests_with_options(
     _ rawValue: UInt64,
     _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> Int32 {
-    guard let ptr else {
-        return authservicesFail(
-            outError,
-            with: AuthServicesBridgeError.invalidArgument("null authorization controller handle")
-        )
+    let handle: AuthControllerHandle
+    do {
+        handle = try authservices_borrow(ptr, as: AuthControllerHandle.self)
+    } catch {
+        return authservicesFail(outError, with: error)
     }
-    let handle = authservices_borrow(ptr, as: AuthControllerHandle.self)
     if rawValue == 0 {
-        authservices_authorization_controller_perform_requests(ptr)
+        DispatchQueue.main.async {
+            handle.controller.performRequests()
+        }
         return AUTHSERVICES_OK
     }
     guard #available(macOS 13.0, *) else {
@@ -525,20 +486,39 @@ public func authservices_authorization_controller_perform_requests_with_options(
 }
 
 @_cdecl("authservices_authorization_controller_cancel")
-public func authservices_authorization_controller_cancel(_ ptr: UnsafeMutableRawPointer?) {
-    guard let ptr else { return }
-    let handle = authservices_borrow(ptr, as: AuthControllerHandle.self)
-    guard #available(macOS 13.0, *) else { return }
+public func authservices_authorization_controller_cancel(
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+    let handle: AuthControllerHandle
+    do {
+        handle = try authservices_borrow(ptr, as: AuthControllerHandle.self)
+    } catch {
+        return authservicesFail(outError, with: error)
+    }
+    guard #available(macOS 13.0, *) else {
+        return authservicesFail(
+            outError,
+            with: AuthServicesBridgeError.notSupported("ASAuthorizationController.cancel() requires macOS 13.0")
+        )
+    }
     DispatchQueue.main.async {
         handle.controller.cancel()
     }
+    return AUTHSERVICES_OK
 }
 
 @_cdecl("authservices_authorization_controller_request_count")
-public func authservices_authorization_controller_request_count(_ ptr: UnsafeMutableRawPointer?) -> UInt64 {
-    guard let ptr else { return 0 }
-    let handle = authservices_borrow(ptr, as: AuthControllerHandle.self)
-    return UInt64(handle.controller.authorizationRequests.count)
+public func authservices_authorization_controller_request_count(
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> UInt64 {
+    do {
+        return UInt64(try authservices_borrow(ptr, as: AuthControllerHandle.self).controller.authorizationRequests.count)
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return 0
+    }
 }
 
 @_cdecl("authservices_authorization_controller_release")

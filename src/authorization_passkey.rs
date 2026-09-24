@@ -1141,8 +1141,11 @@ impl PlatformCredentialDescriptor {
             };
             return Err(AuthenticationServicesError::FrameworkError(message));
         }
-        let json_ptr = unsafe { ffi::authservices_platform_credential_descriptor_copy_json(handle) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_platform_credential_descriptor_copy_json(handle, error)
+        });
         unsafe { ffi::authservices_platform_credential_descriptor_release(handle) };
+        let json_ptr = json_ptr?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "platform_credential_descriptor_copy_json returned null".into(),
@@ -1190,8 +1193,11 @@ impl SecurityKeyCredentialDescriptor {
             };
             return Err(AuthenticationServicesError::FrameworkError(message));
         }
-        let json_ptr = unsafe { ffi::authservices_security_key_credential_descriptor_copy_json(handle) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_security_key_credential_descriptor_copy_json(handle, error)
+        });
         unsafe { ffi::authservices_security_key_credential_descriptor_release(handle) };
+        let json_ptr = json_ptr?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "security_key_credential_descriptor_copy_json returned null".into(),
@@ -1464,7 +1470,9 @@ impl Drop for PasskeyRegistrationRequest {
 
 impl PasskeyRegistrationRequest {
     pub fn kind(&self) -> Result<RequestKind, AuthenticationServicesError> {
-        let json_ptr = unsafe { ffi::authservices_passkey_registration_request_kind_json(self.ptr) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_passkey_registration_request_kind_json(self.ptr, error)
+        })?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "passkey_registration_request_kind_json returned null".into(),
@@ -1475,7 +1483,9 @@ impl PasskeyRegistrationRequest {
     }
 
     pub fn configuration(&self) -> Result<PlatformPasskeyRegistrationOptions, AuthenticationServicesError> {
-        let json_ptr = unsafe { ffi::authservices_passkey_registration_request_copy_json(self.ptr) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_passkey_registration_request_copy_json(self.ptr, error)
+        })?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "passkey_registration_request_copy_json returned null".into(),
@@ -1535,7 +1545,9 @@ impl Drop for PasskeyAssertionRequest {
 
 impl PasskeyAssertionRequest {
     pub fn kind(&self) -> Result<RequestKind, AuthenticationServicesError> {
-        let json_ptr = unsafe { ffi::authservices_passkey_assertion_request_kind_json(self.ptr) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_passkey_assertion_request_kind_json(self.ptr, error)
+        })?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "passkey_assertion_request_kind_json returned null".into(),
@@ -1546,7 +1558,9 @@ impl PasskeyAssertionRequest {
     }
 
     pub fn configuration(&self) -> Result<PlatformPasskeyAssertionOptions, AuthenticationServicesError> {
-        let json_ptr = unsafe { ffi::authservices_passkey_assertion_request_copy_json(self.ptr) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_passkey_assertion_request_copy_json(self.ptr, error)
+        })?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "passkey_assertion_request_copy_json returned null".into(),
@@ -1606,7 +1620,9 @@ impl Drop for SecurityKeyRegistrationRequest {
 
 impl SecurityKeyRegistrationRequest {
     pub fn configuration(&self) -> Result<SecurityKeyRegistrationOptions, AuthenticationServicesError> {
-        let json_ptr = unsafe { ffi::authservices_security_key_registration_request_copy_json(self.ptr) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_security_key_registration_request_copy_json(self.ptr, error)
+        })?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "security_key_registration_request_copy_json returned null".into(),
@@ -1666,7 +1682,9 @@ impl Drop for SecurityKeyAssertionRequest {
 
 impl SecurityKeyAssertionRequest {
     pub fn configuration(&self) -> Result<SecurityKeyAssertionOptions, AuthenticationServicesError> {
-        let json_ptr = unsafe { ffi::authservices_security_key_assertion_request_copy_json(self.ptr) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_security_key_assertion_request_copy_json(self.ptr, error)
+        })?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "security_key_assertion_request_copy_json returned null".into(),
@@ -1842,5 +1860,136 @@ impl SecurityKeyPublicKeyCredentialAssertion {
             user_id: decode_bytes(user_id.as_deref().unwrap_or_default())?,
             used_app_id,
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::ffi::{c_char, c_void};
+    use std::ffi::CString;
+    use std::mem::ManuallyDrop;
+    use std::ptr;
+
+    use super::{
+        PasskeyAssertionRequest, PasskeyRegistrationRequest, PlatformPasskeyRegistrationOptions,
+        PlatformPublicKeyCredentialProvider, SecurityKeyAssertionOptions,
+        SecurityKeyAssertionRequest, SecurityKeyPublicKeyCredentialProvider,
+        SecurityKeyRegistrationOptions, SecurityKeyRegistrationRequest,
+    };
+    use crate::error::AuthenticationServicesError;
+    use crate::ffi;
+    use crate::private::{assert_wrong_handle, checked, status_result, take_string};
+
+    type CopyJson = unsafe extern "C" fn(*mut c_void, *mut *mut c_char) -> *mut c_char;
+    type UpdateJson = unsafe extern "C" fn(*mut c_void, *const c_char, *mut *mut c_char) -> i32;
+
+    fn copy_json(copy: CopyJson, handle: *mut c_void) -> CString {
+        let json = checked(|error| unsafe { copy(handle, error) }).expect("copy");
+        CString::new(unsafe { take_string(json) }).expect("json")
+    }
+
+    fn update_json(
+        update: UpdateJson,
+        handle: *mut c_void,
+        json: &CString,
+    ) -> Result<(), AuthenticationServicesError> {
+        let mut error = ptr::null_mut();
+        let status = unsafe { update(handle, json.as_ptr(), &raw mut error) };
+        status_result(status, error, "update")
+    }
+
+    #[test]
+    fn request_handles_of_another_class_are_rejected() {
+        let platform = PlatformPublicKeyCredentialProvider::new("example.com");
+        let assertion = platform.create_assertion_request(&[1; 32]).expect("assertion");
+        let registration = platform
+            .create_registration_request(&[2; 32], b"user-1", "alice", None)
+            .expect("registration");
+        let security_key = SecurityKeyPublicKeyCredentialProvider::new("example.com");
+        let security_assertion = security_key
+            .create_assertion_request_with_options(&SecurityKeyAssertionOptions {
+                challenge: Some(vec![3; 32]),
+                ..SecurityKeyAssertionOptions::default()
+            })
+            .expect("security-key assertion");
+        let security_registration = security_key
+            .create_registration_request_with_options(&SecurityKeyRegistrationOptions {
+                challenge: Some(vec![4; 32]),
+                user_id: b"user-1".to_vec(),
+                user_name: "alice".into(),
+                ..SecurityKeyRegistrationOptions::default()
+            })
+            .expect("security-key registration");
+
+        let as_registration = ManuallyDrop::new(PasskeyRegistrationRequest {
+            ptr: assertion.ptr,
+            relying_party_identifier: "example.com".into(),
+        });
+        assert_wrong_handle(as_registration.kind());
+        assert_wrong_handle(as_registration.configuration());
+        assert_wrong_handle(as_registration.update(&PlatformPasskeyRegistrationOptions {
+            user_id: b"user-1".to_vec(),
+            user_name: "alice".into(),
+            ..PlatformPasskeyRegistrationOptions::default()
+        }));
+
+        let as_assertion = ManuallyDrop::new(PasskeyAssertionRequest {
+            ptr: registration.ptr,
+            relying_party_identifier: "example.com".into(),
+        });
+        assert_wrong_handle(as_assertion.kind());
+        assert_wrong_handle(as_assertion.configuration());
+
+        let as_security_registration = ManuallyDrop::new(SecurityKeyRegistrationRequest {
+            ptr: registration.ptr,
+            relying_party_identifier: "example.com".into(),
+        });
+        assert_wrong_handle(as_security_registration.configuration());
+
+        let as_security_assertion = ManuallyDrop::new(SecurityKeyAssertionRequest {
+            ptr: assertion.ptr,
+            relying_party_identifier: "example.com".into(),
+        });
+        assert_wrong_handle(as_security_assertion.configuration());
+
+        for (copy, update, own, other) in [
+            (
+                ffi::authservices_passkey_registration_request_copy_json as CopyJson,
+                ffi::authservices_passkey_registration_request_update_from_json as UpdateJson,
+                registration.ptr,
+                assertion.ptr,
+            ),
+            (
+                ffi::authservices_passkey_assertion_request_copy_json,
+                ffi::authservices_passkey_assertion_request_update_from_json,
+                assertion.ptr,
+                security_assertion.ptr,
+            ),
+            (
+                ffi::authservices_security_key_registration_request_copy_json,
+                ffi::authservices_security_key_registration_request_update_from_json,
+                security_registration.ptr,
+                registration.ptr,
+            ),
+            (
+                ffi::authservices_security_key_assertion_request_copy_json,
+                ffi::authservices_security_key_assertion_request_update_from_json,
+                security_assertion.ptr,
+                assertion.ptr,
+            ),
+        ] {
+            let json = copy_json(copy, own);
+            update_json(update, own, &json).expect("an update with the right handle works");
+            assert_wrong_handle(update_json(update, other, &json));
+        }
+
+        for copy in [
+            ffi::authservices_platform_credential_descriptor_copy_json as CopyJson,
+            ffi::authservices_security_key_credential_descriptor_copy_json,
+            ffi::authservices_password_credential_copy_json,
+            ffi::authservices_web_auth_session_copy_json,
+        ] {
+            assert_wrong_handle(checked(|error| unsafe { copy(assertion.ptr, error) }));
+        }
     }
 }

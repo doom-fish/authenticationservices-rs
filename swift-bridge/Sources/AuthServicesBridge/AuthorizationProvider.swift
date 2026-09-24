@@ -32,10 +32,15 @@ public func authservices_password_request_release(_ ptr: UnsafeMutableRawPointer
 
 @_cdecl("authservices_password_request_kind_json")
 public func authservices_password_request_kind_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    _ = authservices_borrow(ptr, as: ASPasswordRequestHandle.self)
+    do {
+        _ = try authservices_borrow(ptr, as: ASPasswordRequestHandle.self)
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
     return authservicesCopyJSON(
         AuthServicesRequestKindPayload(
             kind: "password",

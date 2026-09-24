@@ -17,14 +17,20 @@ unsafe extern "C" {
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
     pub fn authservices_password_request_release(ptr: *mut c_void);
-    pub fn authservices_password_request_kind_json(ptr: *mut c_void) -> *mut c_char;
+    pub fn authservices_password_request_kind_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
 
     pub fn authservices_password_credential_create(
         user: *const c_char,
         password: *const c_char,
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
-    pub fn authservices_password_credential_copy_json(ptr: *mut c_void) -> *mut c_char;
+    pub fn authservices_password_credential_copy_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
     pub fn authservices_password_credential_release(ptr: *mut c_void);
 
     pub fn authservices_apple_id_provider_create_request(
@@ -32,8 +38,14 @@ unsafe extern "C" {
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
     pub fn authservices_apple_id_request_release(ptr: *mut c_void);
-    pub fn authservices_apple_id_request_kind_json(ptr: *mut c_void) -> *mut c_char;
-    pub fn authservices_apple_id_request_copy_json(ptr: *mut c_void) -> *mut c_char;
+    pub fn authservices_apple_id_request_kind_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
+    pub fn authservices_apple_id_request_copy_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
     pub fn authservices_apple_id_request_update_from_json(
         ptr: *mut c_void,
         payload_json: *const c_char,
@@ -58,8 +70,14 @@ unsafe extern "C" {
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
     pub fn authservices_passkey_registration_request_release(ptr: *mut c_void);
-    pub fn authservices_passkey_registration_request_kind_json(ptr: *mut c_void) -> *mut c_char;
-    pub fn authservices_passkey_registration_request_copy_json(ptr: *mut c_void) -> *mut c_char;
+    pub fn authservices_passkey_registration_request_kind_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
+    pub fn authservices_passkey_registration_request_copy_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
     pub fn authservices_passkey_registration_request_update_from_json(
         ptr: *mut c_void,
         payload_json: *const c_char,
@@ -76,8 +94,14 @@ unsafe extern "C" {
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
     pub fn authservices_passkey_assertion_request_release(ptr: *mut c_void);
-    pub fn authservices_passkey_assertion_request_kind_json(ptr: *mut c_void) -> *mut c_char;
-    pub fn authservices_passkey_assertion_request_copy_json(ptr: *mut c_void) -> *mut c_char;
+    pub fn authservices_passkey_assertion_request_kind_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
+    pub fn authservices_passkey_assertion_request_copy_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
     pub fn authservices_passkey_assertion_request_update_from_json(
         ptr: *mut c_void,
         payload_json: *const c_char,
@@ -88,7 +112,10 @@ unsafe extern "C" {
         payload_json: *const c_char,
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
-    pub fn authservices_security_key_registration_request_copy_json(ptr: *mut c_void) -> *mut c_char;
+    pub fn authservices_security_key_registration_request_copy_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
     pub fn authservices_security_key_registration_request_update_from_json(
         ptr: *mut c_void,
         payload_json: *const c_char,
@@ -100,7 +127,10 @@ unsafe extern "C" {
         payload_json: *const c_char,
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
-    pub fn authservices_security_key_assertion_request_copy_json(ptr: *mut c_void) -> *mut c_char;
+    pub fn authservices_security_key_assertion_request_copy_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
     pub fn authservices_security_key_assertion_request_update_from_json(
         ptr: *mut c_void,
         payload_json: *const c_char,
@@ -112,26 +142,22 @@ unsafe extern "C" {
         payload_json: *const c_char,
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
-    pub fn authservices_platform_credential_descriptor_copy_json(ptr: *mut c_void) -> *mut c_char;
+    pub fn authservices_platform_credential_descriptor_copy_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
     pub fn authservices_platform_credential_descriptor_release(ptr: *mut c_void);
 
     pub fn authservices_security_key_credential_descriptor_create_from_json(
         payload_json: *const c_char,
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
-    pub fn authservices_security_key_credential_descriptor_copy_json(ptr: *mut c_void) -> *mut c_char;
+    pub fn authservices_security_key_credential_descriptor_copy_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
     pub fn authservices_security_key_credential_descriptor_release(ptr: *mut c_void);
 
-    pub fn authservices_authorization_controller_create(
-        apple_id_request: *mut c_void,
-        password_request: *mut c_void,
-        passkey_reg_request: *mut c_void,
-        passkey_assert_request: *mut c_void,
-        refcon: *mut c_void,
-        on_success: Option<unsafe extern "C" fn(refcon: *mut c_void, json: *mut c_char)>,
-        on_error: Option<unsafe extern "C" fn(refcon: *mut c_void, code: i32, msg: *mut c_char)>,
-        out_error: *mut *mut c_char,
-    ) -> *mut c_void;
     pub fn authservices_authorization_controller_create_v2(
         apple_id_request: *mut c_void,
         password_request: *mut c_void,
@@ -143,16 +169,22 @@ unsafe extern "C" {
         release: ContextRelease,
         on_success: Option<unsafe extern "C" fn(refcon: *mut c_void, json: *mut c_char)>,
         on_error: Option<unsafe extern "C" fn(refcon: *mut c_void, code: i32, msg: *mut c_char)>,
+        out_controller: *mut *mut c_void,
         out_error: *mut *mut c_char,
-    ) -> *mut c_void;
-    pub fn authservices_authorization_controller_perform_requests(ptr: *mut c_void);
+    ) -> i32;
     pub fn authservices_authorization_controller_perform_requests_with_options(
         ptr: *mut c_void,
         raw_value: u64,
         out_error: *mut *mut c_char,
     ) -> i32;
-    pub fn authservices_authorization_controller_cancel(ptr: *mut c_void);
-    pub fn authservices_authorization_controller_request_count(ptr: *mut c_void) -> u64;
+    pub fn authservices_authorization_controller_cancel(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> i32;
+    pub fn authservices_authorization_controller_request_count(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> u64;
     pub fn authservices_authorization_controller_release(ptr: *mut c_void);
 
     pub fn authservices_web_auth_session_create(
@@ -183,12 +215,18 @@ unsafe extern "C" {
         >,
         out_error: *mut *mut c_char,
     ) -> *mut c_void;
-    pub fn authservices_web_auth_session_copy_json(ptr: *mut c_void) -> *mut c_char;
+    pub fn authservices_web_auth_session_copy_json(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> *mut c_char;
     pub fn authservices_web_auth_session_start(
         ptr: *mut c_void,
         out_error: *mut *mut c_char,
     ) -> i32;
-    pub fn authservices_web_auth_session_cancel(ptr: *mut c_void);
+    pub fn authservices_web_auth_session_cancel(
+        ptr: *mut c_void,
+        out_error: *mut *mut c_char,
+    ) -> i32;
     pub fn authservices_web_auth_session_release(ptr: *mut c_void);
     pub fn authservices_web_auth_callback_matches_url(
         callback_json: *const c_char,

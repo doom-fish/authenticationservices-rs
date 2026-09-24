@@ -110,7 +110,9 @@ impl Drop for PasswordRequest {
 impl PasswordRequest {
     /// Returns metadata about this request kind.
     pub fn kind(&self) -> Result<RequestKind, AuthenticationServicesError> {
-        let json_ptr = unsafe { ffi::authservices_password_request_kind_json(self.ptr) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_password_request_kind_json(self.ptr, error)
+        })?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "password_request_kind_json returned null".into(),

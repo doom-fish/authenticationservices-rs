@@ -36,16 +36,21 @@ public func authservices_password_credential_create(
 
 @_cdecl("authservices_password_credential_copy_json")
 public func authservices_password_credential_copy_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    let handle = authservices_borrow(ptr, as: ASPasswordCredentialHandle.self)
-    return authservicesCopyJSON(
-        AuthServicesPasswordCredentialPayload(
-            user: handle.credential.user,
-            password: handle.credential.password
+    do {
+        let handle = try authservices_borrow(ptr, as: ASPasswordCredentialHandle.self)
+        return authservicesCopyJSON(
+            AuthServicesPasswordCredentialPayload(
+                user: handle.credential.user,
+                password: handle.credential.password
+            )
         )
-    )
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
 }
 
 @_cdecl("authservices_password_credential_release")

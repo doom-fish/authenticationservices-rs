@@ -55,8 +55,11 @@ impl PasswordCredential {
             };
             return Err(AuthenticationServicesError::FrameworkError(message));
         }
-        let json_ptr = unsafe { ffi::authservices_password_credential_copy_json(handle) };
+        let json_ptr = private::checked(|error| unsafe {
+            ffi::authservices_password_credential_copy_json(handle, error)
+        });
         unsafe { ffi::authservices_password_credential_release(handle) };
+        let json_ptr = json_ptr?;
         if json_ptr.is_null() {
             return Err(AuthenticationServicesError::Unknown(
                 "password_credential_copy_json returned null".into(),

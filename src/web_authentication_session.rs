@@ -230,7 +230,9 @@ fn create_session_handle(
 }
 
 fn inspect_handle(handle: *mut c_void) -> Result<WebAuthenticationSessionInfo, AuthenticationServicesError> {
-    let json_ptr = unsafe { ffi::authservices_web_auth_session_copy_json(handle) };
+    let json_ptr = private::checked(|error| unsafe {
+        ffi::authservices_web_auth_session_copy_json(handle, error)
+    })?;
     if json_ptr.is_null() {
         return Err(AuthenticationServicesError::Unknown(
             "web_auth_session_copy_json returned null".into(),
@@ -255,7 +257,7 @@ impl Drop for WebAuthenticationSessionGuard {
         self.context.deactivate();
         if !self.handle.is_null() {
             unsafe {
-                ffi::authservices_web_auth_session_cancel(self.handle);
+                ffi::authservices_web_auth_session_cancel(self.handle, ptr::null_mut());
                 ffi::authservices_web_auth_session_release(self.handle);
             }
         }
@@ -264,8 +266,11 @@ impl Drop for WebAuthenticationSessionGuard {
 
 impl WebAuthenticationSessionGuard {
     /// Cancel the in-flight authentication session.
-    pub fn cancel(&self) {
-        unsafe { ffi::authservices_web_auth_session_cancel(self.handle) };
+    pub fn cancel(&self) -> Result<(), AuthenticationServicesError> {
+        let mut err_ptr = ptr::null_mut();
+        let status =
+            unsafe { ffi::authservices_web_auth_session_cancel(self.handle, &raw mut err_ptr) };
+        private::status_result(status, err_ptr, "web_auth_session_cancel")
     }
 
     /// Returns the latest introspected session properties.
@@ -372,9 +377,15 @@ mod tests {
 
     use doom_fish_utils::callback_context::CallbackContext;
 
-    use super::{on_complete_trampoline, WebSessionCell, WebSessionState};
+    use std::mem::ManuallyDrop;
+
+    use super::{
+        on_complete_trampoline, WebAuthenticationSessionGuard, WebSessionCell, WebSessionState,
+    };
+    use crate::authorization_apple_id_provider::AppleIdProvider;
     use crate::error::AuthenticationServicesError;
     use crate::ffi;
+    use crate::private::{assert_wrong_handle, status_result};
 
     unsafe extern "C" {
         fn strdup(value: *const c_char) -> *mut c_char;
@@ -432,5 +443,19 @@ mod tests {
                 "user cancelled".to_owned()
             )))
         );
+    }
+
+    #[test]
+    fn session_handles_of_another_class_are_rejected() {
+        let apple_id = AppleIdProvider::new().create_request(None).expect("Apple ID request");
+        let guard = ManuallyDrop::new(WebAuthenticationSessionGuard {
+            handle: apple_id.ptr,
+            context: CallbackContext::new(Mutex::new(WebSessionState { result: None })),
+        });
+        assert_wrong_handle(guard.cancel());
+        assert_wrong_handle(guard.info());
+        let mut err_ptr = ptr::null_mut();
+        let status = unsafe { ffi::authservices_web_auth_session_start(apple_id.ptr, &raw mut err_ptr) };
+        assert_wrong_handle(status_result(status, err_ptr, "web_auth_session_start"));
     }
 }

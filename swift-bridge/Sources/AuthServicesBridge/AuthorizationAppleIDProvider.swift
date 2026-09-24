@@ -149,10 +149,15 @@ public func authservices_apple_id_request_release(_ ptr: UnsafeMutableRawPointer
 
 @_cdecl("authservices_apple_id_request_kind_json")
 public func authservices_apple_id_request_kind_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    _ = authservices_borrow(ptr, as: ASAppleIDRequestHandle.self)
+    do {
+        _ = try authservices_borrow(ptr, as: ASAppleIDRequestHandle.self)
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
     return authservicesCopyJSON(
         AuthServicesRequestKindPayload(
             kind: "apple_id",
@@ -167,11 +172,16 @@ public func authservices_apple_id_request_kind_json(
 
 @_cdecl("authservices_apple_id_request_copy_json")
 public func authservices_apple_id_request_copy_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    let handle = authservices_borrow(ptr, as: ASAppleIDRequestHandle.self)
-    return authservicesCopyJSON(authservicesBuildAppleIDRequestPayload(handle.request))
+    do {
+        let handle = try authservices_borrow(ptr, as: ASAppleIDRequestHandle.self)
+        return authservicesCopyJSON(authservicesBuildAppleIDRequestPayload(handle.request))
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
 }
 
 @_cdecl("authservices_apple_id_request_update_from_json")
@@ -188,7 +198,7 @@ public func authservices_apple_id_request_update_from_json(
     }
     do {
         let payload = try authservicesDecodeJSON(payloadJson, as: AuthServicesAppleIDRequestPayload.self)
-        let handle = authservices_borrow(ptr, as: ASAppleIDRequestHandle.self)
+        let handle = try authservices_borrow(ptr, as: ASAppleIDRequestHandle.self)
         try handle.controllerUse.mutate {
             authservicesApplyAppleIDRequestPayload(payload, to: handle.request)
         }

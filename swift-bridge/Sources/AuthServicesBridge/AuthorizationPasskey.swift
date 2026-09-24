@@ -836,12 +836,18 @@ public func authservices_passkey_registration_request_release(_ ptr: UnsafeMutab
 
 @_cdecl("authservices_passkey_registration_request_kind_json")
 public func authservices_passkey_registration_request_kind_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    let payload = authservicesBuildPlatformRegistrationRequestPayload(
-        authservices_borrow(ptr, as: ASPasskeyRegistrationRequestHandle.self).request
-    )
+    let payload: AuthServicesPlatformRegistrationRequestPayload
+    do {
+        payload = authservicesBuildPlatformRegistrationRequestPayload(
+            try authservices_borrow(ptr, as: ASPasskeyRegistrationRequestHandle.self).request
+        )
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
     return authservicesCopyJSON(
         AuthServicesRequestKindPayload(
             kind: "passkey_registration",
@@ -856,14 +862,19 @@ public func authservices_passkey_registration_request_kind_json(
 
 @_cdecl("authservices_passkey_registration_request_copy_json")
 public func authservices_passkey_registration_request_copy_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    return authservicesCopyJSON(
-        authservicesBuildPlatformRegistrationRequestPayload(
-            authservices_borrow(ptr, as: ASPasskeyRegistrationRequestHandle.self).request
+    do {
+        return authservicesCopyJSON(
+            authservicesBuildPlatformRegistrationRequestPayload(
+                try authservices_borrow(ptr, as: ASPasskeyRegistrationRequestHandle.self).request
+            )
         )
-    )
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
 }
 
 @_cdecl("authservices_passkey_registration_request_update_from_json")
@@ -883,7 +894,7 @@ public func authservices_passkey_registration_request_update_from_json(
             payloadJson,
             as: AuthServicesPlatformRegistrationRequestPayload.self
         )
-        let handle = authservices_borrow(ptr, as: ASPasskeyRegistrationRequestHandle.self)
+        let handle = try authservices_borrow(ptr, as: ASPasskeyRegistrationRequestHandle.self)
         try handle.controllerUse.mutate {
             try authservicesApplyPlatformRegistrationRequestPayload(payload, to: handle.request)
         }
@@ -936,12 +947,18 @@ public func authservices_passkey_assertion_request_release(_ ptr: UnsafeMutableR
 
 @_cdecl("authservices_passkey_assertion_request_kind_json")
 public func authservices_passkey_assertion_request_kind_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    let payload = authservicesBuildPlatformAssertionRequestPayload(
-        authservices_borrow(ptr, as: ASPasskeyAssertionRequestHandle.self).request
-    )
+    let payload: AuthServicesPlatformAssertionRequestPayload
+    do {
+        payload = authservicesBuildPlatformAssertionRequestPayload(
+            try authservices_borrow(ptr, as: ASPasskeyAssertionRequestHandle.self).request
+        )
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
     return authservicesCopyJSON(
         AuthServicesRequestKindPayload(
             kind: "passkey_assertion",
@@ -956,14 +973,19 @@ public func authservices_passkey_assertion_request_kind_json(
 
 @_cdecl("authservices_passkey_assertion_request_copy_json")
 public func authservices_passkey_assertion_request_copy_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    return authservicesCopyJSON(
-        authservicesBuildPlatformAssertionRequestPayload(
-            authservices_borrow(ptr, as: ASPasskeyAssertionRequestHandle.self).request
+    do {
+        return authservicesCopyJSON(
+            authservicesBuildPlatformAssertionRequestPayload(
+                try authservices_borrow(ptr, as: ASPasskeyAssertionRequestHandle.self).request
+            )
         )
-    )
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
 }
 
 @_cdecl("authservices_passkey_assertion_request_update_from_json")
@@ -983,7 +1005,7 @@ public func authservices_passkey_assertion_request_update_from_json(
             payloadJson,
             as: AuthServicesPlatformAssertionRequestPayload.self
         )
-        let handle = authservices_borrow(ptr, as: ASPasskeyAssertionRequestHandle.self)
+        let handle = try authservices_borrow(ptr, as: ASPasskeyAssertionRequestHandle.self)
         try handle.controllerUse.mutate {
             try authservicesApplyPlatformAssertionRequestPayload(payload, to: handle.request)
         }
@@ -1046,14 +1068,19 @@ public func authservices_security_key_registration_request_create_from_json(
 
 @_cdecl("authservices_security_key_registration_request_copy_json")
 public func authservices_security_key_registration_request_copy_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    return authservicesCopyJSON(
-        authservicesBuildSecurityKeyRegistrationRequestPayload(
-            authservices_borrow(ptr, as: ASSecurityKeyRegistrationRequestHandle.self).request
+    do {
+        return authservicesCopyJSON(
+            authservicesBuildSecurityKeyRegistrationRequestPayload(
+                try authservices_borrow(ptr, as: ASSecurityKeyRegistrationRequestHandle.self).request
+            )
         )
-    )
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
 }
 
 @_cdecl("authservices_security_key_registration_request_update_from_json")
@@ -1073,7 +1100,7 @@ public func authservices_security_key_registration_request_update_from_json(
             payloadJson,
             as: AuthServicesSecurityKeyRegistrationRequestPayload.self
         )
-        let handle = authservices_borrow(ptr, as: ASSecurityKeyRegistrationRequestHandle.self)
+        let handle = try authservices_borrow(ptr, as: ASSecurityKeyRegistrationRequestHandle.self)
         try handle.controllerUse.mutate {
             try authservicesApplySecurityKeyRegistrationRequestPayload(payload, to: handle.request)
         }
@@ -1108,14 +1135,19 @@ public func authservices_security_key_assertion_request_create_from_json(
 
 @_cdecl("authservices_security_key_assertion_request_copy_json")
 public func authservices_security_key_assertion_request_copy_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    return authservicesCopyJSON(
-        authservicesBuildSecurityKeyAssertionRequestPayload(
-            authservices_borrow(ptr, as: ASSecurityKeyAssertionRequestHandle.self).request
+    do {
+        return authservicesCopyJSON(
+            authservicesBuildSecurityKeyAssertionRequestPayload(
+                try authservices_borrow(ptr, as: ASSecurityKeyAssertionRequestHandle.self).request
+            )
         )
-    )
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
 }
 
 @_cdecl("authservices_security_key_assertion_request_update_from_json")
@@ -1135,7 +1167,7 @@ public func authservices_security_key_assertion_request_update_from_json(
             payloadJson,
             as: AuthServicesSecurityKeyAssertionRequestPayload.self
         )
-        let handle = authservices_borrow(ptr, as: ASSecurityKeyAssertionRequestHandle.self)
+        let handle = try authservices_borrow(ptr, as: ASSecurityKeyAssertionRequestHandle.self)
         try handle.controllerUse.mutate {
             try authservicesApplySecurityKeyAssertionRequestPayload(payload, to: handle.request)
         }
@@ -1170,14 +1202,19 @@ public func authservices_platform_credential_descriptor_create_from_json(
 
 @_cdecl("authservices_platform_credential_descriptor_copy_json")
 public func authservices_platform_credential_descriptor_copy_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    return authservicesCopyJSON(
-        authservicesPlatformDescriptorPayload(
-            authservices_borrow(ptr, as: ASPlatformCredentialDescriptorHandle.self).descriptor
+    do {
+        return authservicesCopyJSON(
+            authservicesPlatformDescriptorPayload(
+                try authservices_borrow(ptr, as: ASPlatformCredentialDescriptorHandle.self).descriptor
+            )
         )
-    )
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
 }
 
 @_cdecl("authservices_platform_credential_descriptor_release")
@@ -1205,14 +1242,19 @@ public func authservices_security_key_credential_descriptor_create_from_json(
 
 @_cdecl("authservices_security_key_credential_descriptor_copy_json")
 public func authservices_security_key_credential_descriptor_copy_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    return authservicesCopyJSON(
-        authservicesSecurityDescriptorPayload(
-            authservices_borrow(ptr, as: ASSecurityKeyCredentialDescriptorHandle.self).descriptor
+    do {
+        return authservicesCopyJSON(
+            authservicesSecurityDescriptorPayload(
+                try authservices_borrow(ptr, as: ASSecurityKeyCredentialDescriptorHandle.self).descriptor
+            )
         )
-    )
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
 }
 
 @_cdecl("authservices_security_key_credential_descriptor_release")

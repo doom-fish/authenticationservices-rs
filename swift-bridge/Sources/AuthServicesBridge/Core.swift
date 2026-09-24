@@ -15,8 +15,14 @@ func authservices_retain<T: AnyObject>(_ object: T) -> UnsafeMutableRawPointer {
 }
 
 @inline(__always)
-func authservices_borrow<T: AnyObject>(_ ptr: UnsafeMutableRawPointer, as _: T.Type = T.self) -> T {
-    Unmanaged<T>.fromOpaque(ptr).takeUnretainedValue()
+func authservices_borrow<T: AnyObject>(_ ptr: UnsafeMutableRawPointer?, as type: T.Type) throws -> T {
+    guard let ptr else {
+        throw AuthServicesBridgeError.invalidArgument("missing \(type) handle")
+    }
+    guard let object = Unmanaged<AnyObject>.fromOpaque(ptr).takeUnretainedValue() as? T else {
+        throw AuthServicesBridgeError.invalidArgument("handle is not a \(type)")
+    }
+    return object
 }
 
 @inline(__always)

@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `update` now returns `InvalidArgument` while an authorization controller
   still holds the request, including perform or cancel work already queued on
   the main queue.
+- The Swift bridge unboxed request, controller, credential, descriptor and
+  web-session handles without checking their class, so a handle of the wrong
+  type was reinterpreted as the expected one. Every bridge function now checks
+  the class (`as?`) and a mismatch is `AuthenticationServicesError::InvalidArgument`.
 
 ### Fixed
 
@@ -42,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `update` on a passkey or security-key request silently ignored a new
   challenge or client data. Changing either now returns `InvalidArgument`;
   `None` or the current value is accepted.
+- `AuthorizationGuard::cancel` did nothing on macOS 12; it returns
+  `NotSupported` there now. Failures while creating an authorization
+  controller (no request, a missing callback, a handle of the wrong type) were
+  reported as `FrameworkError` and are `InvalidArgument` now.
 
 ### Changed
 
@@ -57,6 +65,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Send` but no longer `Sync`.
 - **Breaking:** request constructors return `InvalidArgument` for a missing or
   empty challenge.
+- **Breaking:** `AuthorizationGuard::cancel` and
+  `WebAuthenticationSessionGuard::cancel` return
+  `Result<(), AuthenticationServicesError>`, and
+  `AuthorizationGuard::request_count` returns
+  `Result<usize, AuthenticationServicesError>`.
 - Dropping `AuthorizationGuard` or `WebAuthenticationSessionGuard` now cancels
   the controller or session.
 - `doom-fish-utils` requirement is now `>=0.4.1, <0.5`.

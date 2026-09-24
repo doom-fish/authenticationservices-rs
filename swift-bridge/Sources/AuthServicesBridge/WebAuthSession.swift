@@ -240,11 +240,16 @@ public func authservices_web_auth_session_create_from_json(
 
 @_cdecl("authservices_web_auth_session_copy_json")
 public func authservices_web_auth_session_copy_json(
-    _ ptr: UnsafeMutableRawPointer?
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> UnsafeMutablePointer<CChar>? {
-    guard let ptr else { return nil }
-    let handle = authservices_borrow(ptr, as: WebAuthSessionHandle.self)
-    return authservicesCopyJSON(authservicesBuildWebAuthenticationSessionPayload(handle))
+    do {
+        let handle = try authservices_borrow(ptr, as: WebAuthSessionHandle.self)
+        return authservicesCopyJSON(authservicesBuildWebAuthenticationSessionPayload(handle))
+    } catch {
+        authservicesPopulateError(outError, with: error)
+        return nil
+    }
 }
 
 @_cdecl("authservices_web_auth_session_start")
@@ -252,13 +257,12 @@ public func authservices_web_auth_session_start(
     _ ptr: UnsafeMutableRawPointer?,
     _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> Int32 {
-    guard let ptr else {
-        return authservicesFail(
-            outError,
-            with: AuthServicesBridgeError.invalidArgument("null web authentication session handle")
-        )
+    let handle: WebAuthSessionHandle
+    do {
+        handle = try authservices_borrow(ptr, as: WebAuthSessionHandle.self)
+    } catch {
+        return authservicesFail(outError, with: error)
     }
-    let handle = authservices_borrow(ptr, as: WebAuthSessionHandle.self)
     var started = false
     if Thread.isMainThread {
         started = handle.session.start()
@@ -277,12 +281,20 @@ public func authservices_web_auth_session_start(
 }
 
 @_cdecl("authservices_web_auth_session_cancel")
-public func authservices_web_auth_session_cancel(_ ptr: UnsafeMutableRawPointer?) {
-    guard let ptr else { return }
-    let handle = authservices_borrow(ptr, as: WebAuthSessionHandle.self)
+public func authservices_web_auth_session_cancel(
+    _ ptr: UnsafeMutableRawPointer?,
+    _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+    let handle: WebAuthSessionHandle
+    do {
+        handle = try authservices_borrow(ptr, as: WebAuthSessionHandle.self)
+    } catch {
+        return authservicesFail(outError, with: error)
+    }
     DispatchQueue.main.async {
         handle.session.cancel()
     }
+    return AUTHSERVICES_OK
 }
 
 @_cdecl("authservices_web_auth_session_release")
