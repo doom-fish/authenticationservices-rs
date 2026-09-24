@@ -35,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compared with derived, variable-time `PartialEq`. They are `Zeroizing` now
   and compare in constant time, and the bridge's JSON buffer that carries an
   authorization or password credential is wiped before it is freed.
+- `Debug` for the Rust-side models `SingleSignOnCredential`,
+  `ProviderExtensionLoginConfiguration`, `ProviderExtensionLoginManager`,
+  `ProviderExtensionAuthorizationResult`,
+  `ProviderExtensionAuthorizationOutcome` and `OneTimeCodeCredential` printed
+  access and identity tokens, private keys, HPKE pre-shared keys, SSO and
+  registration tokens, authorization header values, HTTP bodies and one-time
+  codes. These print as `<redacted>` now; header and token maps show only
+  their keys.
 
 ### Fixed
 

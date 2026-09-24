@@ -1,5 +1,7 @@
 //! Credential-provider extension and passkey-request helpers.
 
+use std::fmt;
+
 use crate::authorization_passkey::{
     LargeBlobAssertionInput, LargeBlobAssertionOutput, LargeBlobRegistrationInput,
     LargeBlobRegistrationOutput, PlatformCredentialDescriptor,
@@ -15,6 +17,7 @@ use crate::credential_identity_store::{
 };
 use crate::error::AuthenticationServicesError;
 use crate::password_credential::PasswordCredential;
+use crate::private;
 
 /// `ASCOSEAlgorithmIdentifier`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -167,9 +170,18 @@ impl PasskeyCredentialRequestParameters {
 }
 
 /// `ASOneTimeCodeCredential`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct OneTimeCodeCredential {
     pub code: String,
+}
+
+impl fmt::Debug for OneTimeCodeCredential {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { code: _ } = self;
+        f.debug_struct("OneTimeCodeCredential")
+            .field("code", &private::REDACTED)
+            .finish()
+    }
 }
 
 impl OneTimeCodeCredential {

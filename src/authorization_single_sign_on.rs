@@ -1,8 +1,11 @@
 //! `ASAuthorizationSingleSignOn*` helpers.
 
+use std::fmt;
+
 use crate::authorization_apple_id_provider::{AppleIdRequestConfiguration, AppleIdScope};
 use crate::authorization_types::{AuthorizationCredential, AuthorizationRequest};
 use crate::foundation_types::{HttpResponse, QueryItem};
+use crate::private;
 
 /// `ASAuthorizationSingleSignOnRequest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,7 +58,7 @@ impl SingleSignOnProvider {
 }
 
 /// `ASAuthorizationSingleSignOnCredential`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SingleSignOnCredential {
     pub state: Option<String>,
     pub access_token: Option<Vec<u8>>,
@@ -63,6 +66,27 @@ pub struct SingleSignOnCredential {
     pub authorized_scopes: Vec<AppleIdScope>,
     pub authenticated_response: Option<HttpResponse>,
     pub private_keys: Vec<String>,
+}
+
+impl fmt::Debug for SingleSignOnCredential {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self {
+            state,
+            access_token,
+            identity_token,
+            authorized_scopes,
+            authenticated_response,
+            private_keys,
+        } = self;
+        f.debug_struct("SingleSignOnCredential")
+            .field("state", state)
+            .field("access_token", &access_token.as_ref().map(|_| private::REDACTED))
+            .field("identity_token", &identity_token.as_ref().map(|_| private::REDACTED))
+            .field("authorized_scopes", authorized_scopes)
+            .field("authenticated_response", authenticated_response)
+            .field("private_keys", &vec![private::REDACTED; private_keys.len()])
+            .finish()
+    }
 }
 
 impl SingleSignOnCredential {

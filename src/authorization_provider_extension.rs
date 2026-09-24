@@ -1,12 +1,14 @@
 //! Platform SSO / provider-extension helpers.
 
 use std::collections::BTreeMap;
+use std::fmt;
 use std::ops::{BitOr, BitOrAssign};
 
 use serde_json::Value;
 
 use crate::error::AuthenticationServicesError;
 use crate::foundation_types::{HttpResponse, QueryItem};
+use crate::private;
 
 /// JSON-serializable custom claims used by provider-extension request builders.
 pub type JsonClaims = BTreeMap<String, Value>;
@@ -246,7 +248,7 @@ impl ProviderExtensionUserLoginConfiguration {
 }
 
 /// `ASAuthorizationProviderExtensionLoginConfiguration`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ProviderExtensionLoginConfiguration {
     pub invalid_credential_predicate: Option<String>,
     pub account_display_name: Option<String>,
@@ -302,6 +304,124 @@ pub struct ProviderExtensionLoginConfiguration {
     pub hpke_pre_shared_key: Option<Vec<u8>>,
     pub hpke_pre_shared_key_id: Option<Vec<u8>>,
     pub hpke_auth_public_key: Option<Vec<u8>>,
+}
+
+impl fmt::Debug for ProviderExtensionLoginConfiguration {
+    #[allow(clippy::too_many_lines)]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self {
+            invalid_credential_predicate,
+            account_display_name,
+            client_id,
+            issuer,
+            audience,
+            token_endpoint_url,
+            jwks_endpoint_url,
+            jwks_trusted_root_certificates,
+            device_context,
+            user_secure_enclave_key_biometric_policy,
+            nonce_endpoint_url,
+            nonce_response_keypath,
+            server_nonce_claim_name,
+            custom_nonce_request_values,
+            custom_assertion_request_header_claims,
+            custom_assertion_request_body_claims,
+            additional_scopes,
+            additional_authorization_scopes,
+            include_previous_refresh_token_in_login_request,
+            previous_refresh_token_claim_name,
+            custom_request_jwt_parameter_name,
+            custom_login_request_values,
+            custom_login_request_header_claims,
+            custom_login_request_body_claims,
+            unique_identifier_claim_name,
+            group_request_claim_name,
+            group_response_claim_name,
+            kerberos_ticket_mappings,
+            refresh_endpoint_url,
+            custom_refresh_request_values,
+            custom_refresh_request_header_claims,
+            custom_refresh_request_body_claims,
+            federation_type,
+            federation_request_urn,
+            federation_mex_url,
+            federation_user_preauthentication_url,
+            federation_mex_url_keypath,
+            federation_predicate,
+            custom_federation_user_preauthentication_request_values,
+            login_request_encryption_public_key,
+            login_request_encryption_apv_prefix,
+            login_request_encryption_algorithm,
+            login_request_hpke_pre_shared_key,
+            login_request_hpke_pre_shared_key_id,
+            key_endpoint_url,
+            custom_key_exchange_request_values,
+            custom_key_exchange_request_header_claims,
+            custom_key_exchange_request_body_claims,
+            custom_key_request_values,
+            custom_key_request_header_claims,
+            custom_key_request_body_claims,
+            hpke_pre_shared_key,
+            hpke_pre_shared_key_id,
+            hpke_auth_public_key,
+        } = self;
+        f.debug_struct("ProviderExtensionLoginConfiguration")
+            .field("invalid_credential_predicate", invalid_credential_predicate)
+            .field("account_display_name", account_display_name)
+            .field("client_id", client_id)
+            .field("issuer", issuer)
+            .field("audience", audience)
+            .field("token_endpoint_url", token_endpoint_url)
+            .field("jwks_endpoint_url", jwks_endpoint_url)
+            .field("jwks_trusted_root_certificates", jwks_trusted_root_certificates)
+            .field("device_context", device_context)
+            .field("user_secure_enclave_key_biometric_policy", user_secure_enclave_key_biometric_policy)
+            .field("nonce_endpoint_url", nonce_endpoint_url)
+            .field("nonce_response_keypath", nonce_response_keypath)
+            .field("server_nonce_claim_name", server_nonce_claim_name)
+            .field("custom_nonce_request_values", custom_nonce_request_values)
+            .field("custom_assertion_request_header_claims", custom_assertion_request_header_claims)
+            .field("custom_assertion_request_body_claims", custom_assertion_request_body_claims)
+            .field("additional_scopes", additional_scopes)
+            .field("additional_authorization_scopes", additional_authorization_scopes)
+            .field("include_previous_refresh_token_in_login_request", include_previous_refresh_token_in_login_request)
+            .field("previous_refresh_token_claim_name", previous_refresh_token_claim_name)
+            .field("custom_request_jwt_parameter_name", custom_request_jwt_parameter_name)
+            .field("custom_login_request_values", custom_login_request_values)
+            .field("custom_login_request_header_claims", custom_login_request_header_claims)
+            .field("custom_login_request_body_claims", custom_login_request_body_claims)
+            .field("unique_identifier_claim_name", unique_identifier_claim_name)
+            .field("group_request_claim_name", group_request_claim_name)
+            .field("group_response_claim_name", group_response_claim_name)
+            .field("kerberos_ticket_mappings", kerberos_ticket_mappings)
+            .field("refresh_endpoint_url", refresh_endpoint_url)
+            .field("custom_refresh_request_values", custom_refresh_request_values)
+            .field("custom_refresh_request_header_claims", custom_refresh_request_header_claims)
+            .field("custom_refresh_request_body_claims", custom_refresh_request_body_claims)
+            .field("federation_type", federation_type)
+            .field("federation_request_urn", federation_request_urn)
+            .field("federation_mex_url", federation_mex_url)
+            .field("federation_user_preauthentication_url", federation_user_preauthentication_url)
+            .field("federation_mex_url_keypath", federation_mex_url_keypath)
+            .field("federation_predicate", federation_predicate)
+            .field("custom_federation_user_preauthentication_request_values", custom_federation_user_preauthentication_request_values)
+            .field("login_request_encryption_public_key", login_request_encryption_public_key)
+            .field("login_request_encryption_apv_prefix", login_request_encryption_apv_prefix)
+            .field("login_request_encryption_algorithm", login_request_encryption_algorithm)
+            .field("login_request_hpke_pre_shared_key", &login_request_hpke_pre_shared_key.as_ref().map(|_| private::REDACTED))
+            .field("login_request_hpke_pre_shared_key_id", login_request_hpke_pre_shared_key_id)
+            .field("key_endpoint_url", key_endpoint_url)
+            .field("custom_key_exchange_request_values", custom_key_exchange_request_values)
+            .field("custom_key_exchange_request_header_claims", custom_key_exchange_request_header_claims)
+            .field("custom_key_exchange_request_body_claims", custom_key_exchange_request_body_claims)
+            .field("custom_key_request_values", custom_key_request_values)
+            .field("custom_key_request_header_claims", custom_key_request_header_claims)
+            .field("custom_key_request_body_claims", custom_key_request_body_claims)
+            .field("hpke_pre_shared_key", &hpke_pre_shared_key.as_ref().map(|_| private::REDACTED))
+            .field("hpke_pre_shared_key_id", hpke_pre_shared_key_id)
+            .field("hpke_auth_public_key", hpke_auth_public_key)
+            .finish()
+    }
 }
 
 impl ProviderExtensionLoginConfiguration {
@@ -415,7 +535,7 @@ impl ProviderExtensionLoginConfiguration {
 
 /// `ASAuthorizationProviderExtensionLoginManager`.
 #[allow(clippy::struct_excessive_bools)]
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct ProviderExtensionLoginManager {
     pub device_registered: bool,
     pub user_registered: bool,
@@ -432,6 +552,45 @@ pub struct ProviderExtensionLoginManager {
     pub device_registrations_need_repair: bool,
     pub user_registrations_need_repair: bool,
     pub decryption_keys_need_repair: bool,
+}
+
+impl fmt::Debug for ProviderExtensionLoginManager {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self {
+            device_registered,
+            user_registered,
+            registration_token,
+            authentication_method,
+            extension_data,
+            login_user_name,
+            user_login_configuration,
+            sso_tokens,
+            login_configuration,
+            certificates,
+            keys,
+            pending_keys,
+            device_registrations_need_repair,
+            user_registrations_need_repair,
+            decryption_keys_need_repair,
+        } = self;
+        f.debug_struct("ProviderExtensionLoginManager")
+            .field("device_registered", device_registered)
+            .field("user_registered", user_registered)
+            .field("registration_token", &registration_token.as_ref().map(|_| private::REDACTED))
+            .field("authentication_method", authentication_method)
+            .field("extension_data", extension_data)
+            .field("login_user_name", login_user_name)
+            .field("user_login_configuration", user_login_configuration)
+            .field("sso_tokens", &sso_tokens.keys().collect::<Vec<_>>())
+            .field("login_configuration", login_configuration)
+            .field("certificates", certificates)
+            .field("keys", &keys.keys().collect::<Vec<_>>())
+            .field("pending_keys", &pending_keys.keys().collect::<Vec<_>>())
+            .field("device_registrations_need_repair", device_registrations_need_repair)
+            .field("user_registrations_need_repair", user_registrations_need_repair)
+            .field("decryption_keys_need_repair", decryption_keys_need_repair)
+            .finish()
+    }
 }
 
 impl ProviderExtensionLoginManager {
@@ -561,12 +720,32 @@ impl ProviderExtensionLoginManager {
 }
 
 /// `ASAuthorizationProviderExtensionAuthorizationResult`.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct ProviderExtensionAuthorizationResult {
     pub http_authorization_headers: BTreeMap<String, String>,
     pub http_response: Option<HttpResponse>,
     pub http_body: Option<Vec<u8>>,
     pub private_keys: Vec<String>,
+}
+
+impl fmt::Debug for ProviderExtensionAuthorizationResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self {
+            http_authorization_headers,
+            http_response,
+            http_body,
+            private_keys,
+        } = self;
+        f.debug_struct("ProviderExtensionAuthorizationResult")
+            .field(
+                "http_authorization_headers",
+                &http_authorization_headers.keys().collect::<Vec<_>>(),
+            )
+            .field("http_response", http_response)
+            .field("http_body", &http_body.as_ref().map(|_| private::REDACTED))
+            .field("private_keys", &vec![private::REDACTED; private_keys.len()])
+            .finish()
+    }
 }
 
 impl ProviderExtensionAuthorizationResult {
@@ -594,7 +773,7 @@ impl ProviderExtensionAuthorizationResult {
 }
 
 /// Final disposition captured by the Rust-side provider-extension authorization-request wrapper.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum ProviderExtensionAuthorizationOutcome {
     Pending,
     NotHandled,
@@ -607,6 +786,30 @@ pub enum ProviderExtensionAuthorizationOutcome {
     },
     CompletedWithResult(ProviderExtensionAuthorizationResult),
     Failed(AuthenticationServicesError),
+}
+
+impl fmt::Debug for ProviderExtensionAuthorizationOutcome {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Pending => f.write_str("Pending"),
+            Self::NotHandled => f.write_str("NotHandled"),
+            Self::Cancelled => f.write_str("Cancelled"),
+            Self::CompletedWithoutOutput => f.write_str("CompletedWithoutOutput"),
+            Self::CompletedWithHeaders(headers) => f
+                .debug_tuple("CompletedWithHeaders")
+                .field(&headers.keys().collect::<Vec<_>>())
+                .finish(),
+            Self::CompletedWithHttpResponse { response, body } => f
+                .debug_struct("CompletedWithHttpResponse")
+                .field("response", response)
+                .field("body", &body.as_ref().map(|_| private::REDACTED))
+                .finish(),
+            Self::CompletedWithResult(result) => {
+                f.debug_tuple("CompletedWithResult").field(result).finish()
+            }
+            Self::Failed(error) => f.debug_tuple("Failed").field(error).finish(),
+        }
+    }
 }
 
 /// `ASAuthorizationProviderExtensionAuthorizationRequest`.

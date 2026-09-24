@@ -222,3 +222,47 @@ fn provider_extension_models_capture_platform_sso_state() {
         ProviderExtensionFederationType::WsTrust
     ));
 }
+
+#[test]
+fn debug_output_redacts_provider_extension_secrets() {
+    let mut login = ProviderExtensionLoginConfiguration::new(
+        "client-id",
+        "issuer",
+        "https://example.com/token",
+        "https://example.com/jwks",
+        None,
+    );
+    login.hpke_pre_shared_key = Some(b"psk-secret-1".to_vec());
+    login.login_request_hpke_pre_shared_key = Some(b"psk-secret-2".to_vec());
+    let rendered = format!("{login:?}");
+    assert!(rendered.contains("client-id"), "{rendered}");
+    for leaked in ["112, 115, 107", "psk-secret"] {
+        assert!(!rendered.contains(leaked), "{leaked} leaked: {rendered}");
+    }
+
+    let mut login_manager = ProviderExtensionLoginManager::new();
+    login_manager.registration_token = Some("registration-secret".into());
+    login_manager.sso_tokens = BTreeMap::from([("refresh".into(), "sso-secret".into())]);
+    login_manager.set_key(ProviderExtensionKeyType::UserDeviceSigning, vec![0xA5; 4]);
+    let rendered = format!("{login_manager:?}");
+    assert!(rendered.contains("refresh"), "{rendered}");
+    for leaked in ["registration-secret", "sso-secret", "165"] {
+        assert!(!rendered.contains(leaked), "{leaked} leaked: {rendered}");
+    }
+
+    let mut result = ProviderExtensionAuthorizationResult::from_http_authorization_headers(
+        BTreeMap::from([("Authorization".into(), "Bearer header-secret".into())]),
+    );
+    result.http_body = Some(b"body-secret".to_vec());
+    result.private_keys = vec!["private-key-secret".into()];
+    let rendered = format!("{result:?}");
+    assert!(rendered.contains("Authorization"), "{rendered}");
+    for leaked in ["header-secret", "private-key-secret", "98, 111, 100, 121"] {
+        assert!(!rendered.contains(leaked), "{leaked} leaked: {rendered}");
+    }
+    let outcome = authenticationservices::ProviderExtensionAuthorizationOutcome::CompletedWithHeaders(
+        BTreeMap::from([("Authorization".into(), "Bearer outcome-secret".into())]),
+    );
+    let rendered = format!("{outcome:?}");
+    assert!(!rendered.contains("outcome-secret"), "{rendered}");
+}

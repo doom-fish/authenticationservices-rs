@@ -28,7 +28,7 @@ The library is imported as `authenticationservices`. The optional `async` featur
 ## Security and threading
 
 - Every passkey and security-key request needs a non-empty challenge, either directly or inside `client_data`; a missing or empty one is an `InvalidArgument` error. The challenge and client data are fixed when a request is created, so create a new request for each ceremony. Registrations also need a user ID of 1 to 64 bytes.
-- `Debug` output redacts identity tokens, authorization codes, passwords, signatures, passkey user IDs, PRF outputs and large-blob data.
+- `Debug` output redacts identity tokens, authorization codes, passwords, signatures, passkey user IDs, PRF outputs and large-blob data, and in the Rust-side models also SSO tokens, private keys, HPKE pre-shared keys, authorization header values, HTTP bodies and one-time codes.
 - Identity tokens, authorization codes, passwords, PRF outputs and large-blob data are `zeroize::Zeroizing` values that are wiped on drop and compared in constant time. The copies `AuthenticationServices` keeps cannot be wiped from Rust.
 - `AuthorizationGuard` and `WebAuthenticationSessionGuard` own their callback context. Dropping a guard cancels the flow, and callbacks that arrive afterwards are ignored.
 - Every bridge call checks the class of the handle it is given and returns `InvalidArgument` for a mismatch.
