@@ -1,4 +1,6 @@
-use authenticationservices::{WebAuthenticationCallback, WebAuthenticationSession};
+use authenticationservices::{
+    AuthenticationServicesError, WebAuthenticationCallback, WebAuthenticationSession,
+};
 
 #[test]
 fn custom_scheme_callbacks_match_urls() {
@@ -16,4 +18,30 @@ fn web_authentication_session_builder_preserves_configuration() {
     assert!(debug.contains("https://example.com/login"));
     assert!(debug.contains("demo"));
     assert!(debug.contains("X-Demo"));
+}
+
+#[test]
+fn starting_a_session_off_the_main_thread_is_an_error() {
+    let session = WebAuthenticationSession::new("https://example.com/login", Some("demo"));
+    let error = session
+        .start()
+        .err()
+        .expect("start must fail off the main thread");
+    assert!(
+        matches!(error, AuthenticationServicesError::MainThreadRequired(_)),
+        "{error:?}"
+    );
+}
+
+#[cfg(feature = "async")]
+#[test]
+fn starting_an_async_session_off_the_main_thread_is_an_error() {
+    let session = WebAuthenticationSession::new("https://example.com/login", Some("demo"));
+    let error = authenticationservices::async_api::AsyncWebAuthenticationSession::new(&session)
+        .start()
+        .expect_err("start must fail off the main thread");
+    assert!(
+        matches!(error, AuthenticationServicesError::MainThreadRequired(_)),
+        "{error:?}"
+    );
 }

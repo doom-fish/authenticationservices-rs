@@ -5,6 +5,7 @@ use crate::private;
 
 /// Errors returned by the `authenticationservices` crate.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AuthenticationServicesError {
     /// An argument was invalid.
     InvalidArgument(String),
@@ -16,6 +17,7 @@ pub enum AuthenticationServicesError {
     Cancelled(String),
     /// The underlying `AuthenticationServices` framework returned an error.
     FrameworkError(String),
+    MainThreadRequired(String),
     /// An error occurred that doesn't fit any other category.
     Unknown(String),
 }
@@ -28,6 +30,7 @@ impl fmt::Display for AuthenticationServicesError {
             | Self::NotSupported(msg)
             | Self::Cancelled(msg)
             | Self::FrameworkError(msg)
+            | Self::MainThreadRequired(msg)
             | Self::Unknown(msg) => write!(f, "{msg}"),
         }
     }
@@ -43,6 +46,7 @@ impl AuthenticationServicesError {
             -3 => Self::NotSupported(message),
             -5 => Self::Cancelled(message),
             -4 => Self::FrameworkError(message),
+            -6 => Self::MainThreadRequired(message),
             _ => Self::Unknown(message),
         }
     }

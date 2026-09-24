@@ -32,7 +32,7 @@ The library is imported as `authenticationservices`. The optional `async` featur
 - `AuthorizationGuard` and `WebAuthenticationSessionGuard` own their callback context. Dropping a guard cancels the flow, and callbacks that arrive afterwards are ignored.
 - Every bridge call checks the class of the handle it is given and returns `InvalidArgument` for a mismatch.
 - Request handles are `Send` but not `Sync`. `update` applies the whole configuration, so start from `configuration()`: it changes the user ID, name and display name, and clears inputs left as `None` or empty. It returns `InvalidArgument` while an authorization controller still holds the request.
-- The framework runs authorization and web-authentication flows on the main thread, so the host must run its main run loop. `WebAuthenticationSession::start` waits for the main thread when it is called from another thread.
+- The framework runs authorization and web-authentication flows on the main thread, so the host must run its main run loop. `WebAuthenticationSession::start` and the async `start` must be called on the main thread and return `MainThreadRequired` elsewhere.
 
 ## Quick start
 

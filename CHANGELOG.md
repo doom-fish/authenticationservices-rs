@@ -58,6 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of keeping their previous value.
 - Large-blob inputs on macOS 13 and PRF inputs on macOS 14 or older were
   silently dropped. A request that sets them returns `NotSupported` now.
+- `WebAuthenticationSession::start` called off the main thread blocked on
+  `DispatchQueue.main.sync`, which deadlocks while the main thread waits for
+  that caller. It returns `AuthenticationServicesError::MainThreadRequired`
+  now, and so does the async `start`.
 
 ### Changed
 
@@ -84,6 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `configuration()` and change the fields you need.
 - **Breaking:** registration requests and their `update` reject a user ID
   that is empty or longer than 64 bytes with `InvalidArgument`.
+- **Breaking:** `AuthenticationServicesError` is `#[non_exhaustive]` and has a
+  new `MainThreadRequired` variant, returned by `WebAuthenticationSession::start`
+  and `AsyncWebAuthenticationSession::start` off the main thread.
 - Dropping `AuthorizationGuard` or `WebAuthenticationSessionGuard` now cancels
   the controller or session.
 - `doom-fish-utils` requirement is now `>=0.4.1, <0.5`.

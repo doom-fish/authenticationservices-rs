@@ -7,6 +7,7 @@ let AUTHSERVICES_TIMED_OUT: Int32 = -2
 let AUTHSERVICES_NOT_SUPPORTED: Int32 = -3
 let AUTHSERVICES_FRAMEWORK_ERROR: Int32 = -4
 let AUTHSERVICES_CANCELLED: Int32 = -5
+let AUTHSERVICES_MAIN_THREAD_REQUIRED: Int32 = -6
 let AUTHSERVICES_UNKNOWN: Int32 = -99
 
 @inline(__always)
@@ -185,6 +186,7 @@ enum AuthServicesBridgeError: Error {
     case timedOut(String)
     case notSupported(String)
     case cancelled(String)
+    case mainThreadRequired(String)
     case unknown(String)
 
     var statusCode: Int32 {
@@ -197,6 +199,8 @@ enum AuthServicesBridgeError: Error {
             return AUTHSERVICES_NOT_SUPPORTED
         case .cancelled:
             return AUTHSERVICES_CANCELLED
+        case .mainThreadRequired:
+            return AUTHSERVICES_MAIN_THREAD_REQUIRED
         case .unknown:
             return AUTHSERVICES_UNKNOWN
         }
@@ -208,6 +212,7 @@ enum AuthServicesBridgeError: Error {
              .timedOut(let message),
              .notSupported(let message),
              .cancelled(let message),
+             .mainThreadRequired(let message),
              .unknown(let message):
             return message
         }

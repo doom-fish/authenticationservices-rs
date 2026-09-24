@@ -263,15 +263,15 @@ public func authservices_web_auth_session_start(
     } catch {
         return authservicesFail(outError, with: error)
     }
-    var started = false
-    if Thread.isMainThread {
-        started = handle.session.start()
-    } else {
-        DispatchQueue.main.sync {
-            started = handle.session.start()
-        }
+    guard Thread.isMainThread else {
+        return authservicesFail(
+            outError,
+            with: AuthServicesBridgeError.mainThreadRequired(
+                "ASWebAuthenticationSession.start() must be called on the main thread"
+            )
+        )
     }
-    if started {
+    if handle.session.start() {
         return AUTHSERVICES_OK
     }
     return authservicesFail(
