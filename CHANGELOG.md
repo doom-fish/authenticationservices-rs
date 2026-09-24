@@ -50,6 +50,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `NotSupported` there now. Failures while creating an authorization
   controller (no request, a missing callback, a handle of the wrong type) were
   reported as `FrameworkError` and are `InvalidArgument` now.
+- `update` ignored changes to the user ID and name of passkey and
+  security-key registrations and to the display name of security-key
+  registrations; they are applied now. Inputs left as `None` or empty (allowed
+  and excluded credentials, credential parameters, large-blob and PRF inputs,
+  the security-key `appID` and the passkey `requestStyle`) are cleared
+  instead of keeping their previous value.
+- Large-blob inputs on macOS 13 and PRF inputs on macOS 14 or older were
+  silently dropped. A request that sets them returns `NotSupported` now.
 
 ### Changed
 
@@ -70,6 +78,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Result<(), AuthenticationServicesError>`, and
   `AuthorizationGuard::request_count` returns
   `Result<usize, AuthenticationServicesError>`.
+- **Breaking:** `update` on `PasskeyRegistrationRequest`,
+  `PasskeyAssertionRequest`, `SecurityKeyRegistrationRequest` and
+  `SecurityKeyAssertionRequest` applies the whole configuration; start from
+  `configuration()` and change the fields you need.
+- **Breaking:** registration requests and their `update` reject a user ID
+  that is empty or longer than 64 bytes with `InvalidArgument`.
 - Dropping `AuthorizationGuard` or `WebAuthenticationSessionGuard` now cancels
   the controller or session.
 - `doom-fish-utils` requirement is now `>=0.4.1, <0.5`.

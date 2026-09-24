@@ -566,6 +566,15 @@ fn validate_challenge(
     Ok(())
 }
 
+fn validate_user_id(user_id: &[u8]) -> Result<(), AuthenticationServicesError> {
+    if user_id.is_empty() || user_id.len() > 64 {
+        return Err(AuthenticationServicesError::InvalidArgument(
+            "the WebAuthn user ID must be between 1 and 64 bytes".into(),
+        ));
+    }
+    Ok(())
+}
+
 fn ensure_fixed_at_creation(
     challenge: Option<&[u8]>,
     client_data: Option<&PublicKeyCredentialClientData>,
@@ -1237,6 +1246,7 @@ impl PlatformPublicKeyCredentialProvider {
         user_display_name: Option<&str>,
     ) -> Result<PasskeyRegistrationRequest, AuthenticationServicesError> {
         validate_challenge(Some(challenge), None)?;
+        validate_user_id(user_id)?;
         let rp_c = CString::new(self.relying_party_identifier.as_str())
             .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
         let challenge_c = CString::new(encode_bytes(challenge))
@@ -1280,6 +1290,7 @@ impl PlatformPublicKeyCredentialProvider {
         options: &PlatformPasskeyRegistrationOptions,
     ) -> Result<PasskeyRegistrationRequest, AuthenticationServicesError> {
         validate_challenge(options.challenge.as_deref(), options.client_data.as_ref())?;
+        validate_user_id(&options.user_id)?;
         let payload = platform_registration_options_to_payload(&self.relying_party_identifier, options);
         let json = serde_json::to_string(&payload)
             .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
@@ -1393,6 +1404,7 @@ impl SecurityKeyPublicKeyCredentialProvider {
         options: &SecurityKeyRegistrationOptions,
     ) -> Result<SecurityKeyRegistrationRequest, AuthenticationServicesError> {
         validate_challenge(options.challenge.as_deref(), options.client_data.as_ref())?;
+        validate_user_id(&options.user_id)?;
         let payload = security_registration_options_to_payload(&self.relying_party_identifier, options);
         let json = serde_json::to_string(&payload)
             .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
@@ -1502,6 +1514,7 @@ impl PasskeyRegistrationRequest {
         &self,
         options: &PlatformPasskeyRegistrationOptions,
     ) -> Result<(), AuthenticationServicesError> {
+        validate_user_id(&options.user_id)?;
         let current = self.configuration()?;
         ensure_fixed_at_creation(
             options.challenge.as_deref(),
@@ -1639,6 +1652,7 @@ impl SecurityKeyRegistrationRequest {
         &self,
         options: &SecurityKeyRegistrationOptions,
     ) -> Result<(), AuthenticationServicesError> {
+        validate_user_id(&options.user_id)?;
         let current = self.configuration()?;
         ensure_fixed_at_creation(
             options.challenge.as_deref(),

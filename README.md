@@ -17,7 +17,7 @@ The library is imported as `authenticationservices`. The optional `async` featur
 
 - macOS 12 or newer (the Swift bridge's deployment target) and Rust 1.82 or newer.
 - Newer APIs are checked at run time and return `AuthenticationServicesError::NotSupported` on older systems: `ASAuthorizationController` request options need macOS 13, `client_data` needs macOS 13.5 for passkeys and macOS 14.4 for security keys, passkey credential identities need macOS 14, listing credential identities and HTTPS web-session callbacks need macOS 14.4, the security-key `appID` needs macOS 14.5, one-time-code credential identities and the passkey `requestStyle` need macOS 15, and app service identifiers and display names on credential identities need macOS 26.2.
-- Cancelling an authorization controller needs macOS 13; on macOS 12 `AuthorizationGuard::cancel` returns `NotSupported`. Large-blob inputs need macOS 14 and PRF inputs macOS 15; on older systems they are ignored and the matching outputs are `None`.
+- Cancelling an authorization controller needs macOS 13; on macOS 12 `AuthorizationGuard::cancel` returns `NotSupported`. Large-blob inputs need macOS 14 and PRF inputs macOS 15; on older systems a request that sets them returns `NotSupported`, and the matching outputs are `None`.
 
 ## Entitlements
 
@@ -27,11 +27,11 @@ The library is imported as `authenticationservices`. The optional `async` featur
 
 ## Security and threading
 
-- Every passkey and security-key request needs a non-empty challenge, either directly or inside `client_data`; a missing or empty one is an `InvalidArgument` error. The challenge and client data are fixed when a request is created, so create a new request for each ceremony.
+- Every passkey and security-key request needs a non-empty challenge, either directly or inside `client_data`; a missing or empty one is an `InvalidArgument` error. The challenge and client data are fixed when a request is created, so create a new request for each ceremony. Registrations also need a user ID of 1 to 64 bytes.
 - `Debug` output redacts identity tokens, authorization codes, passwords, signatures, passkey user IDs, PRF outputs and large-blob data.
 - `AuthorizationGuard` and `WebAuthenticationSessionGuard` own their callback context. Dropping a guard cancels the flow, and callbacks that arrive afterwards are ignored.
 - Every bridge call checks the class of the handle it is given and returns `InvalidArgument` for a mismatch.
-- Request handles are `Send` but not `Sync`. `update` returns `InvalidArgument` while an authorization controller still holds the request.
+- Request handles are `Send` but not `Sync`. `update` applies the whole configuration, so start from `configuration()`: it changes the user ID, name and display name, and clears inputs left as `None` or empty. It returns `InvalidArgument` while an authorization controller still holds the request.
 - The framework runs authorization and web-authentication flows on the main thread, so the host must run its main run loop. `WebAuthenticationSession::start` waits for the main thread when it is called from another thread.
 
 ## Quick start

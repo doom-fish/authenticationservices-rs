@@ -532,21 +532,35 @@ private func authservicesApplyPlatformRegistrationRequestPayload(
     _ payload: AuthServicesPlatformRegistrationRequestPayload,
     to request: ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest
 ) throws {
+    let userID = try authservicesDecodeBase64(payload.userID, field: "userID")
+    var applyVersionedInputs: [() -> Void] = []
+    if #available(macOS 14.0, *) {
+        let largeBlob = try authservicesMakeLargeBlobRegistrationInput(payload.largeBlob)
+        applyVersionedInputs.append { request.largeBlob = largeBlob }
+    } else if payload.largeBlob != nil {
+        throw AuthServicesBridgeError.notSupported("largeBlob registration input requires macOS 14.0")
+    }
+    if #available(macOS 15.0, *) {
+        let prf = try authservicesMakePRFRegistrationInput(
+            payload: payload.prf,
+            shouldCheckForSupport: payload.prfShouldCheckForSupport
+        )
+        let requestStyle = try payload.requestStyle.map(authservicesPlatformRequestStyle) ?? .standard
+        applyVersionedInputs.append {
+            request.prf = prf
+            request.requestStyle = requestStyle
+        }
+    } else if payload.prf != nil || payload.prfShouldCheckForSupport == true {
+        throw AuthServicesBridgeError.notSupported("PRF registration input requires macOS 15.0")
+    } else if payload.requestStyle != nil {
+        throw AuthServicesBridgeError.notSupported("platform passkey requestStyle requires macOS 15.0")
+    }
+    request.userID = userID
+    request.name = payload.name
     request.displayName = payload.displayName ?? payload.name
     request.userVerificationPreference = .init(rawValue: payload.userVerificationPreference ?? "preferred")
     request.attestationPreference = .init(rawValue: payload.attestationPreference ?? "none")
-    if let requestStyle = payload.requestStyle {
-        guard #available(macOS 15.0, *) else {
-            throw AuthServicesBridgeError.notSupported("platform passkey requestStyle requires macOS 15.0")
-        }
-        request.requestStyle = try authservicesPlatformRequestStyle(requestStyle)
-    }
-    if #available(macOS 14.0, *), let largeBlob = try authservicesMakeLargeBlobRegistrationInput(payload.largeBlob) {
-        request.largeBlob = largeBlob
-    }
-    if #available(macOS 15.0, *), let prf = try authservicesMakePRFRegistrationInput(payload: payload.prf, shouldCheckForSupport: payload.prfShouldCheckForSupport) {
-        request.prf = prf
-    }
+    applyVersionedInputs.forEach { $0() }
 }
 
 private func authservicesCreatePlatformRegistrationRequest(
@@ -619,16 +633,23 @@ private func authservicesApplyPlatformAssertionRequestPayload(
     _ payload: AuthServicesPlatformAssertionRequestPayload,
     to request: ASAuthorizationPlatformPublicKeyCredentialAssertionRequest
 ) throws {
-    if let allowedCredentials = payload.allowedCredentials {
-        request.allowedCredentials = try allowedCredentials.map(authservicesCreatePlatformDescriptor)
+    let allowedCredentials = try (payload.allowedCredentials ?? []).map(authservicesCreatePlatformDescriptor)
+    var applyVersionedInputs: [() -> Void] = []
+    if #available(macOS 14.0, *) {
+        let largeBlob = try authservicesMakeLargeBlobAssertionInput(payload.largeBlob)
+        applyVersionedInputs.append { request.largeBlob = largeBlob }
+    } else if payload.largeBlob != nil {
+        throw AuthServicesBridgeError.notSupported("largeBlob assertion input requires macOS 14.0")
     }
+    if #available(macOS 15.0, *) {
+        let prf = try authservicesMakePRFAssertionInput(payload.prf)
+        applyVersionedInputs.append { request.prf = prf }
+    } else if payload.prf != nil {
+        throw AuthServicesBridgeError.notSupported("PRF assertion input requires macOS 15.0")
+    }
+    request.allowedCredentials = allowedCredentials
     request.userVerificationPreference = .init(rawValue: payload.userVerificationPreference ?? "preferred")
-    if #available(macOS 14.0, *), let largeBlob = try authservicesMakeLargeBlobAssertionInput(payload.largeBlob) {
-        request.largeBlob = largeBlob
-    }
-    if #available(macOS 15.0, *), let prf = try authservicesMakePRFAssertionInput(payload.prf) {
-        request.prf = prf
-    }
+    applyVersionedInputs.forEach { $0() }
 }
 
 private func authservicesCreatePlatformAssertionRequest(
@@ -678,16 +699,17 @@ private func authservicesApplySecurityKeyRegistrationRequestPayload(
     _ payload: AuthServicesSecurityKeyRegistrationRequestPayload,
     to request: ASAuthorizationSecurityKeyPublicKeyCredentialRegistrationRequest
 ) throws {
+    let userID = try authservicesDecodeBase64(payload.userID, field: "userID")
+    let excludedCredentials = try (payload.excludedCredentials ?? []).map(authservicesCreateSecurityDescriptor)
+    request.userID = userID
+    request.name = payload.name
+    request.displayName = payload.displayName ?? payload.name
     request.userVerificationPreference = .init(rawValue: payload.userVerificationPreference ?? "preferred")
     request.attestationPreference = .init(rawValue: payload.attestationPreference ?? "none")
     request.residentKeyPreference = .init(rawValue: payload.residentKeyPreference ?? "discouraged")
-    if let excludedCredentials = payload.excludedCredentials {
-        request.excludedCredentials = try excludedCredentials.map(authservicesCreateSecurityDescriptor)
-    }
-    if let credentialParameters = payload.credentialParameters {
-        request.credentialParameters = credentialParameters.map {
-            ASAuthorizationPublicKeyCredentialParameters(algorithm: .init(rawValue: $0))
-        }
+    request.excludedCredentials = excludedCredentials
+    request.credentialParameters = (payload.credentialParameters ?? []).map {
+        ASAuthorizationPublicKeyCredentialParameters(algorithm: .init(rawValue: $0))
     }
 }
 
@@ -750,16 +772,17 @@ private func authservicesApplySecurityKeyAssertionRequestPayload(
     _ payload: AuthServicesSecurityKeyAssertionRequestPayload,
     to request: ASAuthorizationSecurityKeyPublicKeyCredentialAssertionRequest
 ) throws {
-    if let allowedCredentials = payload.allowedCredentials {
-        request.allowedCredentials = try allowedCredentials.map(authservicesCreateSecurityDescriptor)
-    }
-    request.userVerificationPreference = .init(rawValue: payload.userVerificationPreference ?? "preferred")
+    let allowedCredentials = try (payload.allowedCredentials ?? []).map(authservicesCreateSecurityDescriptor)
     if let appID = payload.appID {
         guard #available(macOS 14.5, *) else {
             throw AuthServicesBridgeError.notSupported("security-key appID requires macOS 14.5")
         }
         request.appID = appID
+    } else if #available(macOS 14.5, *) {
+        request.appID = nil
     }
+    request.allowedCredentials = allowedCredentials
+    request.userVerificationPreference = .init(rawValue: payload.userVerificationPreference ?? "preferred")
 }
 
 private func authservicesCreateSecurityKeyAssertionRequest(
