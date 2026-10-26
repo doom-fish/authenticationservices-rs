@@ -1,15 +1,14 @@
 use authenticationservices::{
     authorization_error_domain, credential_identity_store_error_domain, extension_error_domain,
-    web_authentication_session_error_domain, AppleIdButton, AppleIdButtonStyle,
-    AppleIdButtonType, Authorization, AuthorizationControllerDelegate,
+    web_authentication_session_error_domain, AppleIdButton, AppleIdButtonStyle, AppleIdButtonType,
+    Authorization, AuthorizationControllerDelegate,
     AuthorizationControllerPresentationContextProviding, AuthorizationCredential,
     AuthorizationRequest, CredentialIdentityRecord, CredentialServiceIdentifier, Image,
     OpenIdRequest, OpenIdRequestConfiguration, PasskeyAssertionCredential,
     PasskeyRegistrationCredential, PasswordCredential, PasswordCredentialIdentity,
-    PasswordProvider, PresentationAnchor, PublicKeyCredential,
-    PublicKeyCredentialAssertion, PublicKeyCredentialRegistration,
-    PublicKeyCredentialUserVerificationPreference, UserAgeRange, UserDetectionStatus,
-    ViewController,
+    PasswordProvider, PresentationAnchor, PublicKeyCredential, PublicKeyCredentialAssertion,
+    PublicKeyCredentialRegistration, PublicKeyCredentialUserVerificationPreference, UserAgeRange,
+    UserDetectionStatus, ViewController,
 };
 
 struct DummyAuthorizationDelegate;
@@ -107,17 +106,26 @@ fn apple_id_authorization_payload_decodes_age_and_detection_status() {
     .unwrap();
 
     let credential = authorization.apple_id_credential().unwrap();
-    assert_eq!(credential.real_user_status, Some(UserDetectionStatus::LikelyReal));
+    assert_eq!(
+        credential.real_user_status,
+        Some(UserDetectionStatus::LikelyReal)
+    );
     assert_eq!(credential.user_age_range, Some(UserAgeRange::Child));
 }
 
 #[test]
 fn base_traits_and_domain_helpers_are_available() {
     let password_request = PasswordProvider::new().create_request().unwrap();
-    assert_eq!(AuthorizationRequest::provider_identifier(&password_request), "password");
+    assert_eq!(
+        AuthorizationRequest::provider_identifier(&password_request),
+        "password"
+    );
 
     let password_credential = PasswordCredential::new("user", "secret").unwrap();
-    assert_eq!(AuthorizationCredential::provider_identifier(&password_credential), "password");
+    assert_eq!(
+        AuthorizationCredential::provider_identifier(&password_credential),
+        "password"
+    );
 
     let assertion = PasskeyAssertionCredential::new(
         b"user-handle".to_vec(),
@@ -136,7 +144,10 @@ fn base_traits_and_domain_helpers_are_available() {
 
     assert_eq!(credential_id_len(&assertion), b"credential-id".len());
     assert_eq!(assertion_sig_len(&assertion), b"signature".len());
-    assert_eq!(registration_attestation_len(&registration), b"attestation-object".len());
+    assert_eq!(
+        registration_attestation_len(&registration),
+        b"attestation-object".len()
+    );
 
     let identity = PasswordCredentialIdentity {
         service_identifier: CredentialServiceIdentifier::domain("example.com"),
@@ -144,13 +155,16 @@ fn base_traits_and_domain_helpers_are_available() {
         record_identifier: Some("record-1".into()),
         rank: 42,
     };
-    assert_eq!(CredentialIdentityRecord::record_identifier(&identity), Some("record-1"));
+    assert_eq!(
+        CredentialIdentityRecord::record_identifier(&identity),
+        Some("record-1")
+    );
     assert_eq!(CredentialIdentityRecord::rank(&identity), 42);
 
-    assert!(!authorization_error_domain().unwrap().is_empty());
-    assert!(!credential_identity_store_error_domain().unwrap().is_empty());
-    assert!(!extension_error_domain().unwrap().is_empty());
-    assert!(!web_authentication_session_error_domain().unwrap().is_empty());
+    assert_ne!(authorization_error_domain().unwrap(), "");
+    assert_ne!(credential_identity_store_error_domain().unwrap(), "");
+    assert_ne!(extension_error_domain().unwrap(), "");
+    assert_ne!(web_authentication_session_error_domain().unwrap(), "");
 
     assert!(matches!(
         PublicKeyCredentialUserVerificationPreference::Preferred,

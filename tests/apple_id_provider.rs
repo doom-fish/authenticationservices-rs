@@ -17,6 +17,6 @@ fn apple_id_defaults_match_framework_defaults() {
 fn apple_id_revocation_notification_name_is_available() {
     let provider = AppleIdProvider::new();
     let notification = provider.credential_revoked_notification().unwrap();
-    assert!(!notification.is_empty());
+    assert_ne!(notification, "");
     assert!(notification.contains("Credential") || notification.contains("credential"));
 }

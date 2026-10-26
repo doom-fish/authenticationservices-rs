@@ -29,7 +29,10 @@ fn update_applies_user_identity_changes() {
     assert_eq!(updated.user_id, b"user-2");
     assert_eq!(updated.user_name, "bob");
     assert_eq!(updated.user_display_name.as_deref(), Some("Bob"));
-    assert_eq!(registration.kind().unwrap().user_name.as_deref(), Some("bob"));
+    assert_eq!(
+        registration.kind().unwrap().user_name.as_deref(),
+        Some("bob")
+    );
 
     let security_key = SecurityKeyPublicKeyCredentialProvider::new("example.com");
     let security_registration = security_key
@@ -93,9 +96,17 @@ fn update_clears_inputs_that_are_left_out() {
             ..PlatformPasskeyAssertionOptions::default()
         })
         .unwrap();
-    assert_eq!(assertion.configuration().unwrap().allowed_credentials.len(), 1);
-    assertion.update(&PlatformPasskeyAssertionOptions::default()).unwrap();
-    assert!(assertion.configuration().unwrap().allowed_credentials.is_empty());
+    assert_eq!(
+        assertion.configuration().unwrap().allowed_credentials.len(),
+        1
+    );
+    assertion
+        .update(&PlatformPasskeyAssertionOptions::default())
+        .unwrap();
+    assert_eq!(
+        assertion.configuration().unwrap().allowed_credentials.len(),
+        0
+    );
 
     let security_key = SecurityKeyPublicKeyCredentialProvider::new("example.com");
     let security_registration = security_key
@@ -122,8 +133,8 @@ fn update_clears_inputs_that_are_left_out() {
         })
         .unwrap();
     let cleared = security_registration.configuration().unwrap();
-    assert!(cleared.excluded_credentials.is_empty());
-    assert!(cleared.credential_parameters.is_empty());
+    assert_eq!(cleared.excluded_credentials.len(), 0);
+    assert_eq!(cleared.credential_parameters.len(), 0);
 
     let security_assertion = security_key
         .create_assertion_request_with_options(&SecurityKeyAssertionOptions {
@@ -133,7 +144,11 @@ fn update_clears_inputs_that_are_left_out() {
         })
         .unwrap();
     assert_eq!(
-        security_assertion.configuration().unwrap().app_id.as_deref(),
+        security_assertion
+            .configuration()
+            .unwrap()
+            .app_id
+            .as_deref(),
         Some("https://example.com/app-id.json")
     );
     security_assertion
@@ -146,7 +161,9 @@ fn update_clears_inputs_that_are_left_out() {
 fn user_ids_outside_the_webauthn_bounds_are_rejected() {
     let platform = PlatformPublicKeyCredentialProvider::new("example.com");
     assert_invalid_argument(platform.create_registration_request(&[1; 32], b"", "alice", None));
-    assert_invalid_argument(platform.create_registration_request(&[1; 32], &[0; 65], "alice", None));
+    assert_invalid_argument(
+        platform.create_registration_request(&[1; 32], &[0; 65], "alice", None),
+    );
     let registration = platform
         .create_registration_request(&[1; 32], &[0; 64], "alice", None)
         .unwrap();

@@ -1,8 +1,9 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use authenticationservices::{
-    AuthenticationServicesError, CredentialIdentity, CredentialIdentityStore, CredentialIdentityTypes,
-    CredentialServiceIdentifier, PasskeyCredentialIdentity, PasswordCredentialIdentity,
+    AuthenticationServicesError, CredentialIdentity, CredentialIdentityStore,
+    CredentialIdentityTypes, CredentialServiceIdentifier, PasskeyCredentialIdentity,
+    PasswordCredentialIdentity,
 };
 
 struct RemoveOnDrop<'a> {
@@ -27,7 +28,10 @@ impl Drop for RemoveOnDrop<'_> {
 }
 
 fn password_identity() -> CredentialIdentity {
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos();
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
     CredentialIdentity::Password(PasswordCredentialIdentity {
         service_identifier: CredentialServiceIdentifier::domain("example.com"),
         user: "alice@example.com".into(),
@@ -48,7 +52,10 @@ fn credential_identity_store_mutations_reach_the_framework() {
 
     match store.save_identities(&identities) {
         Ok(()) => {
-            let saved = RemoveOnDrop { store: &store, identities: Some(&identities) };
+            let saved = RemoveOnDrop {
+                store: &store,
+                identities: Some(&identities),
+            };
             store.remove_identities(&identities).unwrap();
             saved.disarm();
         }
@@ -59,7 +66,9 @@ fn credential_identity_store_mutations_reach_the_framework() {
                 "{error:?}"
             );
             assert!(
-                error.to_string().contains("ASCredentialIdentityStoreErrorDomain"),
+                error
+                    .to_string()
+                    .contains("ASCredentialIdentityStoreErrorDomain"),
                 "{error}"
             );
         }
@@ -76,7 +85,10 @@ fn credential_identity_store_lists_identities_for_a_service() {
         )
         .unwrap();
     if !store.state().unwrap().is_enabled {
-        assert!(identities.is_empty());
+        assert_eq!(
+            identities,
+            [] as [authenticationservices::CredentialIdentity; 0]
+        );
     }
 }
 
