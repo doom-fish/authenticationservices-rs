@@ -22,11 +22,15 @@ use std::ptr;
 use doom_fish_utils::completion::{AsyncCompletion, AsyncCompletionFuture};
 use doom_fish_utils::panic_safe::catch_user_panic;
 
+#[cfg(feature = "full")]
 use crate::authorization_apple_id_provider::AppleIdRequest;
+#[cfg(feature = "full")]
 use crate::authorization_controller::{
     Authorization, AuthorizationControllerRequestOptions, AuthorizationControllerRequests,
 };
+#[cfg(feature = "full")]
 use crate::authorization_passkey::{PasskeyAssertionRequest, PasskeyRegistrationRequest};
+#[cfg(feature = "full")]
 use crate::authorization_provider::PasswordRequest;
 use crate::error::AuthenticationServicesError;
 use crate::ffi;
@@ -43,6 +47,7 @@ fn flatten_async_result<T>(
         .and_then(|result| result)
 }
 
+#[cfg(feature = "full")]
 unsafe extern "C" fn authorization_success_async_cb(refcon: *mut c_void, json: *mut c_char) {
     catch_user_panic(
         "authenticationservices::authorization_success_async_cb",
@@ -59,6 +64,7 @@ unsafe extern "C" fn authorization_success_async_cb(refcon: *mut c_void, json: *
     );
 }
 
+#[cfg(feature = "full")]
 unsafe extern "C" fn authorization_error_async_cb(
     refcon: *mut c_void,
     code: i32,
@@ -87,7 +93,7 @@ unsafe extern "C" fn web_auth_complete_async_cb(
 ) {
     catch_user_panic("authenticationservices::web_auth_complete_async_cb", || {
         let result = if code == ffi::status::OK {
-            Ok(unsafe { private::take_string(url) })
+            Ok(unsafe { private::take_wiped_string(url) })
         } else {
             let message = unsafe { private::take_string(error_msg) };
             Err(AuthenticationServicesError::from_code(code, message))
@@ -101,13 +107,16 @@ unsafe extern "C" fn web_auth_complete_async_cb(
 }
 
 /// Future returned by [`AsyncAuthorizationController`].
+#[cfg(feature = "full")]
 pub struct AuthorizationFuture {
     inner: AsyncCompletionFuture<Result<Authorization, AuthenticationServicesError>>,
     handle: *mut c_void,
 }
 
+#[cfg(feature = "full")]
 unsafe impl Send for AuthorizationFuture {}
 
+#[cfg(feature = "full")]
 impl core::fmt::Debug for AuthorizationFuture {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("AuthorizationFuture")
@@ -115,6 +124,7 @@ impl core::fmt::Debug for AuthorizationFuture {
     }
 }
 
+#[cfg(feature = "full")]
 impl Future for AuthorizationFuture {
     type Output = Result<Authorization, AuthenticationServicesError>;
 
@@ -123,6 +133,7 @@ impl Future for AuthorizationFuture {
     }
 }
 
+#[cfg(feature = "full")]
 impl Drop for AuthorizationFuture {
     fn drop(&mut self) {
         if !self.handle.is_null() {
@@ -171,9 +182,11 @@ impl Drop for WebAuthenticationSessionFuture {
 }
 
 /// Executor-agnostic async wrapper for `ASAuthorizationController` request flows.
+#[cfg(feature = "full")]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct AsyncAuthorizationController;
 
+#[cfg(feature = "full")]
 impl AsyncAuthorizationController {
     /// Create a new async authorization controller wrapper.
     #[must_use]

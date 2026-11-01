@@ -1,7 +1,9 @@
 use core::ffi::{c_char, CStr};
 use core::ptr;
+use core::sync::atomic::{compiler_fence, Ordering};
 
-use zeroize::{Zeroize, Zeroizing};
+#[cfg(feature = "full")]
+use zeroize::Zeroizing;
 
 use crate::error::AuthenticationServicesError;
 use crate::ffi;
@@ -15,17 +17,30 @@ pub unsafe fn take_string(ptr: *mut c_char) -> String {
         .unwrap_or_default()
 }
 
-pub unsafe fn take_secret_string(ptr: *mut c_char) -> Zeroizing<String> {
+fn wipe(bytes: &mut [u8]) {
+    for byte in bytes {
+        unsafe { ptr::write_volatile(byte, 0) };
+    }
+    compiler_fence(Ordering::SeqCst);
+}
+
+pub unsafe fn take_wiped_string(ptr: *mut c_char) -> String {
     if ptr.is_null() {
-        return Zeroizing::new(String::new());
+        return String::new();
     }
     let bytes = unsafe { CStr::from_ptr(ptr) }.to_bytes();
-    let text = Zeroizing::new(String::from_utf8_lossy(bytes).into_owned());
-    unsafe { core::slice::from_raw_parts_mut(ptr.cast::<u8>(), bytes.len()) }.zeroize();
+    let text = String::from_utf8_lossy(bytes).into_owned();
+    wipe(unsafe { core::slice::from_raw_parts_mut(ptr.cast::<u8>(), bytes.len()) });
     unsafe { ffi::authservices_string_free(ptr) };
     text
 }
 
+#[cfg(feature = "full")]
+pub unsafe fn take_secret_string(ptr: *mut c_char) -> Zeroizing<String> {
+    Zeroizing::new(unsafe { take_wiped_string(ptr) })
+}
+
+#[cfg(feature = "full")]
 pub fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
     if left.len() != right.len() {
         return false;
@@ -39,6 +54,7 @@ pub fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
     difference == 0
 }
 
+#[cfg(feature = "full")]
 pub fn optional_secret_eq(left: Option<&[u8]>, right: Option<&[u8]>) -> bool {
     match (left, right) {
         (Some(left), Some(right)) => constant_time_eq(left, right),
@@ -47,6 +63,7 @@ pub fn optional_secret_eq(left: Option<&[u8]>, right: Option<&[u8]>) -> bool {
     }
 }
 
+#[cfg(feature = "full")]
 pub const REDACTED: &str = "<redacted>";
 
 pub fn checked<T>(

@@ -22,7 +22,11 @@ final class WebAuthSessionPresentationContextProvider: NSObject,
     ASWebAuthenticationPresentationContextProviding {
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        if let window = NSApplication.shared.windows.first {
+        let application = NSApplication.shared
+        if let window = application.keyWindow
+            ?? application.mainWindow
+            ?? application.windows.first(where: { $0.isVisible })
+            ?? application.windows.first {
             return window
         }
         return NSWindow()

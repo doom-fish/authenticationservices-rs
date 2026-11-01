@@ -13,6 +13,20 @@ authenticationservices-rs = "0.4"
 
 The library is imported as `authenticationservices`. The optional `async` feature adds executor-agnostic futures for `ASAuthorizationController` and `ASWebAuthenticationSession`.
 
+The default `full` feature gives the complete API. It adds the `base64`, `serde`, `serde_json` and `zeroize` dependencies. If your app uses only `ASWebAuthenticationSession`, set `default-features = false`:
+
+```toml
+[dependencies]
+authenticationservices-rs = { version = "0.4", default-features = false, features = ["async"] }
+```
+
+Without `full`, the only dependency is `doom-fish-utils`, and the crate contains these items:
+
+- `WebAuthenticationSession`, `WebAuthenticationSessionGuard`, `WebAuthenticationCallback` and `WebAuthenticationSessionInfo`.
+- `AuthenticationServicesError` and the four `*_error_domain` functions.
+- `SettingsHelper` and the `AppleIdButton` types.
+- With the `async` feature, `AsyncWebAuthenticationSession` and `WebAuthenticationSessionFuture`. `AsyncAuthorizationController` is available only with `full`.
+
 ## Requirements
 
 - macOS 12 or newer (the Swift bridge's deployment target) and Rust 1.82 or newer.

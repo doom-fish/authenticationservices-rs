@@ -229,6 +229,9 @@ func authservicesStatus(for error: Error) -> Int32 {
         }
         return AUTHSERVICES_FRAMEWORK_ERROR
     }
+    if let error = error as? ASWebAuthenticationSessionError, error.code == .canceledLogin {
+        return AUTHSERVICES_CANCELLED
+    }
     return AUTHSERVICES_FRAMEWORK_ERROR
 }
 

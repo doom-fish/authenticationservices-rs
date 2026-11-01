@@ -7,33 +7,20 @@ use std::ptr;
 use std::sync::{Mutex, PoisonError};
 
 use doom_fish_utils::callback_context::CallbackContext;
+use doom_fish_utils::json::{self, JsonError, JsonValue};
 use doom_fish_utils::panic_safe::catch_user_panic;
-use serde::{Deserialize, Serialize};
 
 use crate::error::AuthenticationServicesError;
 use crate::ffi;
 use crate::private;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct WebAuthenticationCallbackPayload {
-    kind: String,
-    scheme: Option<String>,
-    host: Option<String>,
-    path: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct WebAuthenticationSessionPayload {
-    url: String,
-    callback: Option<WebAuthenticationCallbackPayload>,
-    #[serde(rename = "prefersEphemeralWebBrowserSession")]
-    prefers_ephemeral_web_browser_session: bool,
-    #[serde(rename = "additionalHeaderFields")]
-    additional_header_fields: Option<BTreeMap<String, String>>,
-    #[serde(rename = "canStart")]
-    can_start: bool,
-    #[serde(rename = "usesPresentationContextProvider")]
-    uses_presentation_context_provider: bool,
+fn object<const N: usize>(entries: [(&str, JsonValue); N]) -> JsonValue {
+    JsonValue::Object(
+        entries
+            .into_iter()
+            .map(|(key, value)| (key.to_owned(), value))
+            .collect(),
+    )
 }
 
 /// `ASWebAuthenticationSession.Callback`.
@@ -44,38 +31,35 @@ pub enum WebAuthenticationCallback {
 }
 
 impl WebAuthenticationCallback {
-    fn to_payload(&self) -> WebAuthenticationCallbackPayload {
-        match self {
-            Self::CustomScheme(scheme) => WebAuthenticationCallbackPayload {
-                kind: "custom_scheme".into(),
-                scheme: Some(scheme.clone()),
-                host: None,
-                path: None,
-            },
-            Self::Https { host, path } => WebAuthenticationCallbackPayload {
-                kind: "https".into(),
-                scheme: None,
-                host: Some(host.clone()),
-                path: path.clone(),
-            },
-        }
+    fn to_payload(&self) -> JsonValue {
+        let (kind, scheme, host, path) = match self {
+            Self::CustomScheme(scheme) => ("custom_scheme", Some(scheme), None, None),
+            Self::Https { host, path } => ("https", None, Some(host), path.as_ref()),
+        };
+        let text =
+            |value: Option<&String>| value.cloned().map_or(JsonValue::Null, JsonValue::String);
+        object([
+            ("kind", JsonValue::String(kind.to_owned())),
+            ("scheme", text(scheme)),
+            ("host", text(host)),
+            ("path", text(path)),
+        ])
     }
 
-    fn from_payload(payload: WebAuthenticationCallbackPayload) -> Self {
-        match payload.kind.as_str() {
+    fn from_payload(payload: &JsonValue) -> Result<Self, JsonError> {
+        let text = |key: &str| payload.field::<Option<String>>(key);
+        Ok(match payload.field::<String>("kind")?.as_str() {
             "https" => Self::Https {
-                host: payload.host.unwrap_or_default(),
-                path: payload.path,
+                host: text("host")?.unwrap_or_default(),
+                path: text("path")?,
             },
-            _ => Self::CustomScheme(payload.scheme.unwrap_or_default()),
-        }
+            _ => Self::CustomScheme(text("scheme")?.unwrap_or_default()),
+        })
     }
 
     /// Returns whether the callback matches the given URL.
     pub fn matches_url(&self, url: &str) -> Result<bool, AuthenticationServicesError> {
-        let payload = serde_json::to_string(&self.to_payload())
-            .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
-        let payload_c = CString::new(payload)
+        let payload_c = CString::new(self.to_payload().to_string())
             .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
         let url_c = CString::new(url)
             .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))?;
@@ -114,15 +98,22 @@ pub struct WebAuthenticationSessionInfo {
 }
 
 impl WebAuthenticationSessionInfo {
-    fn from_payload(payload: WebAuthenticationSessionPayload) -> Self {
-        Self {
-            url: payload.url,
-            callback: payload.callback.map(WebAuthenticationCallback::from_payload),
-            prefers_ephemeral_web_browser_session: payload.prefers_ephemeral_web_browser_session,
-            additional_header_fields: payload.additional_header_fields.unwrap_or_default(),
-            can_start: payload.can_start,
-            uses_presentation_context_provider: payload.uses_presentation_context_provider,
-        }
+    fn from_payload(payload: &JsonValue) -> Result<Self, JsonError> {
+        Ok(Self {
+            url: payload.field("url")?,
+            callback: payload
+                .field::<Option<JsonValue>>("callback")?
+                .as_ref()
+                .map(WebAuthenticationCallback::from_payload)
+                .transpose()?,
+            prefers_ephemeral_web_browser_session: payload
+                .field("prefersEphemeralWebBrowserSession")?,
+            additional_header_fields: payload
+                .field::<Option<BTreeMap<String, String>>>("additionalHeaderFields")?
+                .unwrap_or_default(),
+            can_start: payload.field("canStart")?,
+            uses_presentation_context_provider: payload.field("usesPresentationContextProvider")?,
+        })
     }
 }
 
@@ -141,7 +132,7 @@ unsafe extern "C" fn on_complete_trampoline(
     catch_user_panic(
         "authenticationservices::on_complete_trampoline",
         || {
-            let url = unsafe { private::take_string(url) };
+            let url = unsafe { private::take_wiped_string(url) };
             let message = unsafe { private::take_string(error_msg) };
             let result = if code == ffi::status::OK {
                 Ok(url)
@@ -162,25 +153,39 @@ unsafe extern "C" fn on_complete_trampoline(
     );
 }
 
-fn session_payload_from_builder(builder: &WebAuthenticationSession) -> WebAuthenticationSessionPayload {
-    WebAuthenticationSessionPayload {
-        url: builder.url.clone(),
-        callback: builder.callback.as_ref().map(WebAuthenticationCallback::to_payload),
-        prefers_ephemeral_web_browser_session: builder.prefers_ephemeral_web_browser_session,
-        additional_header_fields: (!builder.additional_header_fields.is_empty())
-            .then(|| builder.additional_header_fields.clone()),
-        can_start: false,
-        uses_presentation_context_provider: true,
-    }
+fn session_payload_from_builder(builder: &WebAuthenticationSession) -> JsonValue {
+    let additional_header_fields = if builder.additional_header_fields.is_empty() {
+        JsonValue::Null
+    } else {
+        JsonValue::Object(
+            builder
+                .additional_header_fields
+                .iter()
+                .map(|(key, value)| (key.clone(), JsonValue::String(value.clone())))
+                .collect(),
+        )
+    };
+    let callback = builder
+        .callback
+        .as_ref()
+        .map_or(JsonValue::Null, WebAuthenticationCallback::to_payload);
+    object([
+        ("url", JsonValue::String(builder.url.clone())),
+        ("callback", callback),
+        (
+            "prefersEphemeralWebBrowserSession",
+            JsonValue::Bool(builder.prefers_ephemeral_web_browser_session),
+        ),
+        ("additionalHeaderFields", additional_header_fields),
+        ("canStart", JsonValue::Bool(false)),
+        ("usesPresentationContextProvider", JsonValue::Bool(true)),
+    ])
 }
 
 pub(crate) fn session_payload_cstring(
     builder: &WebAuthenticationSession,
 ) -> Result<CString, AuthenticationServicesError> {
-    let payload = session_payload_from_builder(builder);
-    let payload_json = serde_json::to_string(&payload)
-        .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
-    CString::new(payload_json)
+    CString::new(session_payload_from_builder(builder).to_string())
         .map_err(|error| AuthenticationServicesError::InvalidArgument(error.to_string()))
 }
 
@@ -239,9 +244,9 @@ fn inspect_handle(handle: *mut c_void) -> Result<WebAuthenticationSessionInfo, A
         ));
     }
     let json = unsafe { private::take_string(json_ptr) };
-    let payload: WebAuthenticationSessionPayload =
-        serde_json::from_str(&json).map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))?;
-    Ok(WebAuthenticationSessionInfo::from_payload(payload))
+    json::parse(&json)
+        .and_then(|payload| WebAuthenticationSessionInfo::from_payload(&payload))
+        .map_err(|error| AuthenticationServicesError::Unknown(error.to_string()))
 }
 
 /// Guard keeping the underlying `ASWebAuthenticationSession` alive.

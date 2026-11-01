@@ -5,6 +5,33 @@ All notable changes to `authenticationservices-rs` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- The new `full` feature is a default feature. It contains the complete API and the `base64`, `serde`, `serde_json` and `zeroize` dependencies.
+- With `default-features = false`, the only dependency is `doom-fish-utils`. The crate then contains the web authentication session types, `AuthenticationServicesError`, the error-domain functions, `SettingsHelper` and the `AppleIdButton` types. With `async`, it also contains `AsyncWebAuthenticationSession` and `WebAuthenticationSessionFuture`.
+
+### Changed
+
+- The web authentication session uses the `json` module of `doom-fish-utils` for its bridge JSON, not `serde` and `serde_json`. The JSON keys do not change.
+- The minimum `doom-fish-utils` version is now 0.4.3, with its `json` feature.
+- The presentation anchor of a web authentication session is now the first available window in this list:
+  1. The key window.
+  2. The main window.
+  3. The first visible window.
+  4. The first window.
+
+  Before this change, the anchor was always the first window. An app with more than one window now shows the sheet on its active window.
+
+### Fixed
+
+- When the user cancelled a web authentication session, the result was `AuthenticationServicesError::FrameworkError`. It is now `AuthenticationServicesError::Cancelled`. This applies to `WebAuthenticationSessionGuard` and to `WebAuthenticationSessionFuture`.
+
+### Security
+
+- Before the Rust side releases the bridge copy of a web-session callback URL, it sets all bytes to zero. A callback URL can contain an authorization code.
+
 ## [0.4.2] - 2026-10-26
 
 ### Fixed
