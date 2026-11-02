@@ -8,7 +8,7 @@ Safe Rust bindings for Apple's [AuthenticationServices](https://developer.apple.
 
 ```toml
 [dependencies]
-authenticationservices-rs = "0.4"
+authenticationservices-rs = "0.5"
 ```
 
 The library is imported as `authenticationservices`. The optional `async` feature adds executor-agnostic futures for `ASAuthorizationController` and `ASWebAuthenticationSession`.
@@ -17,7 +17,7 @@ The default `full` feature gives the complete API. It adds the `base64`, `serde`
 
 ```toml
 [dependencies]
-authenticationservices-rs = { version = "0.4", default-features = false, features = ["async"] }
+authenticationservices-rs = { version = "0.5", default-features = false, features = ["async"] }
 ```
 
 Without `full`, the only dependency is `doom-fish-utils`, and the crate contains these items:
