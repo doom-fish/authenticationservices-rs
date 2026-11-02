@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - When the user cancelled a web authentication session, the result was `AuthenticationServicesError::FrameworkError`. It is now `AuthenticationServicesError::Cancelled`. This applies to `WebAuthenticationSessionGuard` and to `WebAuthenticationSessionFuture`.
+- `CredentialIdentityStore::save_identities`, `remove_identities`, `replace_identities` and `remove_all_identities` return an error when AuthenticationServices reports a failure without an error. Before this change, the process stopped. The Swift bridge now calls the completion-handler forms of the `ASCredentialIdentityStore` methods instead of their async imports, which trap on that result.
+- A web authentication session that completes with neither a callback URL nor an error now returns an error. Before this change, it returned an empty callback URL as a success.
 
 ### Security
 

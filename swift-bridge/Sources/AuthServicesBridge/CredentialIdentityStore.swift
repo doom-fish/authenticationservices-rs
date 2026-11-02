@@ -206,10 +206,24 @@ private func authservicesCredentialIdentityBatch(
 
 private func authservicesCredentialIdentityStoreCall(
     _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?,
-    _ work: @escaping () async throws -> Void
+    _ operation: @escaping (@escaping (Bool, Error?) -> Void) -> Void
 ) -> Int32 {
     authservicesBlockOnAsync(
-        work: work,
+        work: {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                operation { success, error in
+                    if success {
+                        continuation.resume()
+                    } else {
+                        continuation.resume(
+                            throwing: error ?? AuthServicesBridgeError.unknown(
+                                "AuthenticationServices reported a failure without an error"
+                            )
+                        )
+                    }
+                }
+            }
+        },
         onSuccess: { _ in },
         onError: { error in
             authservicesPopulateError(outError, with: error)
@@ -254,15 +268,15 @@ public func authservices_credential_identity_store_save_identities_json(
     do {
         switch try authservicesCredentialIdentityBatch(payloadJson) {
         case .passwords(let identities):
-            return authservicesCredentialIdentityStoreCall(outError) {
-                try await ASCredentialIdentityStore.shared.saveCredentialIdentities(identities)
+            return authservicesCredentialIdentityStoreCall(outError) { completion in
+                ASCredentialIdentityStore.shared.saveCredentialIdentities(identities, completion: completion)
             }
         case .identities(let identities):
             guard #available(macOS 14.0, *), let identities = identities as? [ASCredentialIdentity] else {
                 throw AuthServicesBridgeError.unknown("unexpected credential identity batch")
             }
-            return authservicesCredentialIdentityStoreCall(outError) {
-                try await ASCredentialIdentityStore.shared.saveCredentialIdentities(identities)
+            return authservicesCredentialIdentityStoreCall(outError) { completion in
+                ASCredentialIdentityStore.shared.saveCredentialIdentities(identities, completion: completion)
             }
         }
     } catch {
@@ -278,15 +292,15 @@ public func authservices_credential_identity_store_remove_identities_json(
     do {
         switch try authservicesCredentialIdentityBatch(payloadJson) {
         case .passwords(let identities):
-            return authservicesCredentialIdentityStoreCall(outError) {
-                try await ASCredentialIdentityStore.shared.removeCredentialIdentities(identities)
+            return authservicesCredentialIdentityStoreCall(outError) { completion in
+                ASCredentialIdentityStore.shared.removeCredentialIdentities(identities, completion: completion)
             }
         case .identities(let identities):
             guard #available(macOS 14.0, *), let identities = identities as? [ASCredentialIdentity] else {
                 throw AuthServicesBridgeError.unknown("unexpected credential identity batch")
             }
-            return authservicesCredentialIdentityStoreCall(outError) {
-                try await ASCredentialIdentityStore.shared.removeCredentialIdentities(identities)
+            return authservicesCredentialIdentityStoreCall(outError) { completion in
+                ASCredentialIdentityStore.shared.removeCredentialIdentities(identities, completion: completion)
             }
         }
     } catch {
@@ -302,15 +316,15 @@ public func authservices_credential_identity_store_replace_identities_json(
     do {
         switch try authservicesCredentialIdentityBatch(payloadJson) {
         case .passwords(let identities):
-            return authservicesCredentialIdentityStoreCall(outError) {
-                try await ASCredentialIdentityStore.shared.replaceCredentialIdentities(with: identities)
+            return authservicesCredentialIdentityStoreCall(outError) { completion in
+                ASCredentialIdentityStore.shared.replaceCredentialIdentities(with: identities, completion: completion)
             }
         case .identities(let identities):
             guard #available(macOS 14.0, *), let identities = identities as? [ASCredentialIdentity] else {
                 throw AuthServicesBridgeError.unknown("unexpected credential identity batch")
             }
-            return authservicesCredentialIdentityStoreCall(outError) {
-                try await ASCredentialIdentityStore.shared.replaceCredentialIdentities(identities)
+            return authservicesCredentialIdentityStoreCall(outError) { completion in
+                ASCredentialIdentityStore.shared.replaceCredentialIdentities(identities, completion: completion)
             }
         }
     } catch {
@@ -322,8 +336,8 @@ public func authservices_credential_identity_store_replace_identities_json(
 public func authservices_credential_identity_store_remove_all(
     _ outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> Int32 {
-    authservicesCredentialIdentityStoreCall(outError) {
-        try await ASCredentialIdentityStore.shared.removeAllCredentialIdentities()
+    authservicesCredentialIdentityStoreCall(outError) { completion in
+        ASCredentialIdentityStore.shared.removeAllCredentialIdentities(completion)
     }
 }
 

@@ -118,8 +118,11 @@ private func authservicesCreateWebAuthenticationSession(
         ) { callbackURL, error in
             if let error {
                 onComplete(context.pointer, nil, authservicesStatus(for: error), authservicesCString(error.localizedDescription))
+            } else if let callbackURL {
+                onComplete(context.pointer, authservicesCString(callbackURL.absoluteString), AUTHSERVICES_OK, nil)
             } else {
-                onComplete(context.pointer, authservicesCString(callbackURL?.absoluteString ?? ""), AUTHSERVICES_OK, nil)
+                let error = AuthServicesBridgeError.unknown("AuthenticationServices returned neither a result nor an error")
+                onComplete(context.pointer, nil, error.statusCode, authservicesCString(error.message))
             }
         }
     } else {
@@ -127,8 +130,11 @@ private func authservicesCreateWebAuthenticationSession(
         session = ASWebAuthenticationSession(url: url, callbackURLScheme: scheme) { callbackURL, error in
             if let error {
                 onComplete(context.pointer, nil, authservicesStatus(for: error), authservicesCString(error.localizedDescription))
+            } else if let callbackURL {
+                onComplete(context.pointer, authservicesCString(callbackURL.absoluteString), AUTHSERVICES_OK, nil)
             } else {
-                onComplete(context.pointer, authservicesCString(callbackURL?.absoluteString ?? ""), AUTHSERVICES_OK, nil)
+                let error = AuthServicesBridgeError.unknown("AuthenticationServices returned neither a result nor an error")
+                onComplete(context.pointer, nil, error.statusCode, authservicesCString(error.message))
             }
         }
     }
